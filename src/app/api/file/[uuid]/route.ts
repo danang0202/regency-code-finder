@@ -132,27 +132,37 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ uuid:
     const meta = JSON.parse(metaRaw);
     const filePath = path.join(storageDir, meta.fileName);
     
-    if (meta.fileType !== "csv") {
-      return new Response(JSON.stringify({ error: "Only CSV update supported" }), {
+    const body = await req.json();
+    const { header, allRows } = body; // allRows berisi semua data (untuk update lengkap)
+
+    if (meta.fileType === "csv") {
+      const csvText = [
+        header.join(meta.separator),
+        ...allRows.map((row: string[]) => row.join(meta.separator))
+      ].join("\n");
+      await writeFile(filePath, csvText, "utf-8");
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } else if (meta.fileType === "excel") {
+      // Write Excel file using XLSX
+      const data = [header, ...allRows];
+      const worksheet = XLSX.utils.aoa_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+      const excelBuffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+      await writeFile(filePath, excelBuffer);
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } else {
+      return new Response(JSON.stringify({ error: "Unsupported file type" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
-    
-    const body = await req.json();
-    const { header, allRows } = body; // allRows berisi semua data (untuk update lengkap)
-    
-    const csvText = [
-      header.join(meta.separator),
-      ...allRows.map((row: string[]) => row.join(meta.separator))
-    ].join("\n");
-    
-    await writeFile(filePath, csvText, "utf-8");
-    
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
   } catch (err) {
     return new Response(JSON.stringify({ error: "Update failed" }), {
       status: 500,
