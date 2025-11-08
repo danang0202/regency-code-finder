@@ -48,7 +48,7 @@ export default function CellDrawer({ opened, onClose, value, cell, onSave }: Pro
       if (results !== null) setResults(null);
       return;
     }
-    fetch(`/api/search-master?query=${encodeURIComponent(debouncedSearch)}`)
+  fetch(`/v2/api/search-master?query=${encodeURIComponent(debouncedSearch)}`)
       .then(res => res.ok ? res.json() : null)
       .then((data: MasterResult | null) => {
         setResults(data);

@@ -23,10 +23,10 @@ export default function ProsesDetailPage() {
       if (!fileId) return;
       let metaObj: { separator: string; fileType: string; originalName?: string; fileName?: string } = { separator: ";", fileType: "csv", fileName: "" };
       try {
-        const metaRes = await fetch(`/api/file/${fileId}?meta=true`);
+  const metaRes = await fetch(`/v2/api/file/${fileId}?meta=true`);
         if (metaRes.ok) metaObj = await metaRes.json();
       } catch { }
-      const res = await fetch(`/api/file/${fileId}`);
+  const res = await fetch(`/v2/api/file/${fileId}`);
       const blob = await res.blob();
       if (metaObj.fileType === "csv") {
         const text = await blob.text();

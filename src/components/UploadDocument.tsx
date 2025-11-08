@@ -134,7 +134,7 @@ export default function UploadDocument() {
                 data.append('originalName', fileObj.name);
                 data.append('separator', isCsv ? separator : '');
                 data.append('fileType', isCsv ? 'csv' : 'excel');
-                const res = await fetch('/api/upload', { method: 'POST', body: data });
+                const res = await fetch('/v2/api/upload', { method: 'POST', body: data });
                 if (res.ok) {
                   window.location.href = `/proses/${uuid}`;
                 }
