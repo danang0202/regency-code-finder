@@ -25,9 +25,25 @@ export default function CellDrawer({ opened, onClose, value, cell, onSave }: Pro
   const [results, setResults] = useState<MasterResult | null>(null);
 
   useEffect(() => {
-    if (opened && searchInputRef.current) {
-      setTimeout(() => searchInputRef.current?.focus(), 150);
+    if (opened) {
+      const timer = setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 220); // delay agar drawer sudah muncul
+      return () => clearTimeout(timer);
     }
+  }, [opened]);
+
+  // Shortcut Ctrl+F untuk fokus ke search bar
+  useEffect(() => {
+    if (!opened) return;
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, [opened]);
 
   useEffect(() => {
@@ -137,11 +153,10 @@ export default function CellDrawer({ opened, onClose, value, cell, onSave }: Pro
                         }}
                         onClick={() => {
                           if (cell) {
-                            const kodeArr = [formatProv(row.kode_prov), formatKab(row.kode_kab)];
-                            const extra: { [colIdx: number]: string } = {};
-                            for (let j = 0; j < kodeArr.length; j++) {
-                              extra[cell.col - (kodeArr.length - 1 - j)] = kodeArr[j];
-                            }
+                            const extra: { [colName: string]: string } = {
+                              kdprov_etl: formatProv(row.kode_prov),
+                              kdkab_etl: formatKab(row.kode_kab)
+                            };
                             onSave(formatKab(row.kode_kab), extra);
                             onClose();
                           }
@@ -183,11 +198,11 @@ export default function CellDrawer({ opened, onClose, value, cell, onSave }: Pro
                         }}
                         onClick={() => {
                           if (cell) {
-                            const kodeArr = [formatProv(row.kode_prov), formatKab(row.kode_kab), formatKec(row.kode_kec)];
-                            const extra: { [colIdx: number]: string } = {};
-                            for (let j = 0; j < kodeArr.length; j++) {
-                              extra[cell.col - (kodeArr.length - 1 - j)] = kodeArr[j];
-                            }
+                            const extra: { [colName: string]: string } = {
+                              kdprov_etl: formatProv(row.kode_prov),
+                              kdkab_etl: formatKab(row.kode_kab),
+                              kdkec_etl: formatKec(row.kode_kec)
+                            };
                             onSave(formatKec(row.kode_kec), extra);
                             onClose();
                           }
@@ -230,11 +245,12 @@ export default function CellDrawer({ opened, onClose, value, cell, onSave }: Pro
                         }}
                         onClick={() => {
                           if (cell) {
-                            const kodeArr = [formatProv(row.kode_prov), formatKab(row.kode_kab), formatKec(row.kode_kec), formatDesa(row.kode_desa)];
-                            const extra: { [colIdx: number]: string } = {};
-                            for (let j = 0; j < kodeArr.length; j++) {
-                              extra[cell.col - (kodeArr.length - 1 - j)] = kodeArr[j];
-                            }
+                            const extra: { [colName: string]: string } = {
+                              kdprov_etl: formatProv(row.kode_prov),
+                              kdkab_etl: formatKab(row.kode_kab),
+                              kdkec_etl: formatKec(row.kode_kec),
+                              kddesa_etl: formatDesa(row.kode_desa)
+                            };
                             onSave(formatDesa(row.kode_desa), extra);
                             onClose();
                           }

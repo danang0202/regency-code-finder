@@ -140,17 +140,39 @@ export default function ProsesDetailPage() {
               onClose={() => setPanelOpen(false)}
               value={panelValue}
               cell={panelCell}
-              onSave={(newValue: string, extra?: { [colIdx: number]: string }) => {
+              onSave={(newValue: string, extra?: { [colName: string]: string }) => {
                 if (panelCell) {
-                  const newRows = [...rows];
+                  let newRows = [...rows];
                   newRows[panelCell.row + 1][panelCell.col] = newValue;
                   if (extra) {
-                    // Pastikan urutan: kodeArr[0] (prov) ke cell paling kiri, kodeArr[n-1] (desa/kec/kab) ke cell yang ditekan
-                    const kodeArr = Object.values(extra);
-                    for (let j = 0; j < kodeArr.length; j++) {
-                      const targetCol = panelCell.col - (kodeArr.length - 1 - j);
-                      newRows[panelCell.row + 1][targetCol] = kodeArr[j];
-                    }
+                    let headerRow = newRows[0];
+                    console.log(headerRow);
+                    
+                    let changed = false;
+                    // Normalisasi header: trim, lowercase, hapus kutip
+                    const normalize = (s: string) => s.trim().replace(/^['"]|['"]$/g, "").toLowerCase();
+                    const normalizedHeader = headerRow.map(h => normalize(h));
+                    Object.entries(extra).forEach(([colName, kodeValue]) => {
+                      const normColName = normalize(colName);
+                      let colIdx = normalizedHeader.indexOf(normColName);
+                      if (colIdx === -1) {
+                        // Cari nama header yang identik (case-insensitive, tanpa kutip)
+                        const existingHeader = headerRow.find(h => normalize(h) === normColName);
+                        if (existingHeader) {
+                          colIdx = headerRow.indexOf(existingHeader);
+                        } else {
+                          // Tambahkan kolom baru jika benar-benar belum ada
+                          headerRow = [...headerRow, colName.trim()];
+                          newRows[0] = headerRow;
+                          newRows = newRows.map((row, i) => i === 0 ? row : [...row, ""]);
+                          colIdx = headerRow.length - 1;
+                          changed = true;
+                          normalizedHeader.push(normColName);
+                        }
+                      }
+                      newRows[panelCell.row + 1][colIdx] = kodeValue;
+                    });
+                    if (changed) setRows(newRows); // update header jika berubah
                   }
                   setRows(newRows);
                 }
