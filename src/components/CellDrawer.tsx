@@ -1,6 +1,6 @@
-import { Drawer, TextInput, Button, Group, Text } from "@mantine/core";
-import { Tooltip } from "@mantine/core";
-import { formatKodeWilayah } from "../helper/formatKodeWilayah";
+import { Drawer, Text, Divider, Box } from "@mantine/core";
+import { IconSearch, IconCommand, IconKeyboard } from '@tabler/icons-react';
+import { formatProv, formatKab, formatKec, formatDesa, getTargetCol } from "../helper/kode-wilayah.helper";
 import { useEffect, useRef, useState } from "react";
 
 interface MasterResult {
@@ -64,18 +64,13 @@ export default function CellDrawer({ opened, onClose, value, cell, onSave }: Pro
       if (results !== null) setResults(null);
       return;
     }
-  fetch(`/v2/api/search-master?query=${encodeURIComponent(debouncedSearch)}`)
+    fetch(`/v2/api/search-master?query=${encodeURIComponent(debouncedSearch)}`)
       .then(res => res.ok ? res.json() : null)
       .then((data: MasterResult | null) => {
         setResults(data);
       });
   }, [debouncedSearch]);
 
-  // Helper usage for kode wilayah
-  const formatProv = (kode: string) => formatKodeWilayah(kode, 2);
-  const formatKab = (kode: string) => formatKodeWilayah(kode, 2);
-  const formatKec = (kode: string) => formatKodeWilayah(kode, 3);
-  const formatDesa = (kode: string) => formatKodeWilayah(kode, 3);
 
   return (
     <Drawer
@@ -86,42 +81,87 @@ export default function CellDrawer({ opened, onClose, value, cell, onSave }: Pro
       padding="md"
       title={cell ? `Edit baris ${cell.row + 1}, kolom ${cell.col + 1}` : "Edit Cell"}
     >
-      <TextInput
-        ref={searchInputRef}
-        label="Cari kode/nama wilayah"
-        value={search}
-        onChange={e => setSearch(e.currentTarget.value)}
-        autoFocus
-      />
-      <Group mt="md">
-        <Button
-          onClick={() => {
-            onSave(search);
-            onClose();
+      <div style={{ position: 'relative', marginBottom: 8 }}>
+        <input
+          ref={searchInputRef}
+          value={search}
+          onChange={e => setSearch(e.currentTarget.value)}
+          autoFocus
+          placeholder="Cari kode atau nama wilayah..."
+          style={{
+            width: '100%',
+            fontSize: 15,
+            padding: '12px 44px 12px 44px',
+            borderRadius: 12,
+            border: '2px solid #1976d2',
+            background: '#fff',
+            boxShadow: '0 2px 8px rgba(25, 118, 210, 0.07)',
+            outline: 'none',
+            fontWeight: 500,
+            color: '#222',
+            transition: 'border 0.2s',
           }}
-          color="blue"
-        >Simpan</Button>
-        <Button variant="default" onClick={onClose}>Batal</Button>
-      </Group>
-      <div style={{ marginTop: 24 }}>
+        />
+        <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#1976d2', pointerEvents: 'none', display: 'flex', alignItems: 'center' }}>
+          <IconSearch size={22} stroke={2} />
+        </span>
+      </div>
+      <div style={{ fontSize: 13, color: '#555', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 14 }}>
+        <span style={{ color: '#888', marginLeft: 4 }}>Gunakan shortcut</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#1976d2', fontWeight: 500 }}>
+          <IconCommand size={16} stroke={2} /> + F
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#1976d2', fontWeight: 500 }}>
+          <IconKeyboard size={16} stroke={2} /> + F
+        </span>
+        <span style={{ color: '#888', marginLeft: 4 }}>untuk fokus ke pencarian</span>
+      </div>
+      <Divider
+        my="sm"
+        variant="dashed"
+        labelPosition="center"
+        label={
+          <>
+            <IconSearch size={12} />
+            <Box ml={5}>Search results</Box>
+          </>
+        }
+      />
+      <div>
         {results && (
           <>
             {results.provinsi.length > 0 && (
               <div style={{ marginBottom: 12 }}>
-                <Text fw={600} mb={4}>Provinsi yang cocok:</Text>
+                <Text fw={600} mb={4} size={'sm'}>Provinsi yang cocok:</Text>
                 <div style={{ maxHeight: 200, overflowY: 'auto' }}>
                   {results.provinsi.map((row, i) => (
                     <div
                       key={i}
-                      style={{ padding: '4px 0', borderBottom: '1px solid #eee', cursor: 'pointer' }}
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: 10,
+                        border: '1px solid #e0e0e0',
+                        background: '#f8fbff',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        transition: 'background 0.2s',
+                        marginBottom: 4,
+                      }}
                       onClick={() => {
+                        // Selalu isi ke kolom kdprov_etl
                         if (cell) {
-                          onSave(formatProv(row.kode_prov));
+                          const extra: { [colName: string]: string } = {
+                            [getTargetCol('prov')]: formatProv(row.kode_prov)
+                          };
+                          onSave(formatProv(row.kode_prov), extra);
                           onClose();
                         }
                       }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#e3f2fd'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#f8fbff'}
                     >
-                      <b>{formatProv(row.kode_prov)}</b> - {row.nama_prov}
+                      <div style={{ fontWeight: 700, fontSize: 15, color: '#1976d2', marginBottom: 2 }}>{formatProv(row.kode_prov)} - {row.nama_prov}</div>
                     </div>
                   ))}
                 </div>
@@ -129,136 +169,126 @@ export default function CellDrawer({ opened, onClose, value, cell, onSave }: Pro
             )}
             {results.kabupaten.length > 0 && (
               <div style={{ marginBottom: 12 }}>
-                <Text fw={600} mb={4}>Kabupaten/Kota yang cocok:</Text>
+                <Text fw={600} size={'sm'} mb={4}>Kabupaten/Kota yang cocok:</Text>
                 <div style={{ maxHeight: 'auto', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, position: 'relative' }}>
                   {results.kabupaten.map((row, i) => (
-                    <Tooltip
+                    <div
                       key={i}
-                      label={<span>Provinsi: <b>{row.nama_prov}</b></span>}
-                      position="bottom"
-                      withArrow
-                      color="#fff"
-                      style={{ color: '#444', fontSize: 13 }}
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: 10,
+                        border: '1px solid #e0e0e0',
+                        background: '#f8fbff',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        transition: 'background 0.2s',
+                        marginBottom: 4,
+                      }}
+                      onClick={() => {
+                        // Selalu isi ke kolom kdkab_etl (dan kdprov_etl jika ada)
+                        if (cell) {
+                          const extra: { [colName: string]: string } = {
+                            [getTargetCol('prov')]: formatProv(row.kode_prov),
+                            [getTargetCol('kab')]: formatKab(row.kode_kab)
+                          };
+                          onSave(formatKab(row.kode_kab), extra);
+                          onClose();
+                        }
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#e3f2fd'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#f8fbff'}
                     >
-                      <div
-                        style={{
-                          padding: '10px 12px',
-                          borderRadius: 8,
-                          border: '1px solid #e0e0e0',
-                          background: '#f8fbff',
-                          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-                          cursor: 'pointer',
-                          position: 'relative',
-                          transition: 'background 0.2s',
-                        }}
-                        onClick={() => {
-                          if (cell) {
-                            const extra: { [colName: string]: string } = {
-                              kdprov_etl: formatProv(row.kode_prov),
-                              kdkab_etl: formatKab(row.kode_kab)
-                            };
-                            onSave(formatKab(row.kode_kab), extra);
-                            onClose();
-                          }
-                        }}
-                      >
-                        <div style={{ fontWeight: 700, fontSize: 15, color: '#1976d2' }}>{formatKab(row.kode_kab)} - {row.kab_nama}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#1976d2', marginBottom: 2 }}>{formatKab(row.kode_kab)} - {row.kab_nama}</div>
+                      <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>
+                        <span style={{ color: '#888' }}>Provinsi:</span> <b style={{ color: '#1976d2' }}>{row.nama_prov}</b>
                       </div>
-                    </Tooltip>
+                    </div>
                   ))}
                 </div>
               </div>
             )}
             {results.kecamatan.length > 0 && (
               <div style={{ marginBottom: 12 }}>
-                <Text fw={600} mb={4}>Kecamatan yang cocok:</Text>
+                <Text fw={600} size={'sm'} mb={4}>Kecamatan yang cocok:</Text>
                 <div style={{ maxHeight: 'auto', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, position: 'relative' }}>
                   {results.kecamatan.map((row, i) => (
-                    <Tooltip
+                    <div
                       key={i}
-                      label={<span>
-                        Provinsi: <b>{row.nama_prov}</b><br />
-                        Kabupaten: <b>{row.kab_nama}</b>
-                      </span>}
-                      position="bottom"
-                      withArrow
-                      color="#fff"
-                      style={{ color: '#444', fontSize: 13 }}
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: 10,
+                        border: '1px solid #e0e0e0',
+                        background: '#f8fbff',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        transition: 'background 0.2s',
+                        marginBottom: 4,
+                      }}
+                      onClick={() => {
+                        // Selalu isi ke kolom kdkec_etl (dan kdkab_etl, kdprov_etl jika ada)
+                        if (cell) {
+                          const extra: { [colName: string]: string } = {
+                            [getTargetCol('prov')]: formatProv(row.kode_prov),
+                            [getTargetCol('kab')]: formatKab(row.kode_kab),
+                            [getTargetCol('kec')]: formatKec(row.kode_kec)
+                          };
+                          onSave(formatKec(row.kode_kec), extra);
+                          onClose();
+                        }
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#e3f2fd'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#f8fbff'}
                     >
-                      <div
-                        style={{
-                          padding: '10px 12px',
-                          borderRadius: 8,
-                          border: '1px solid #e0e0e0',
-                          background: '#f8fbff',
-                          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-                          cursor: 'pointer',
-                          position: 'relative',
-                          transition: 'background 0.2s',
-                        }}
-                        onClick={() => {
-                          if (cell) {
-                            const extra: { [colName: string]: string } = {
-                              kdprov_etl: formatProv(row.kode_prov),
-                              kdkab_etl: formatKab(row.kode_kab),
-                              kdkec_etl: formatKec(row.kode_kec)
-                            };
-                            onSave(formatKec(row.kode_kec), extra);
-                            onClose();
-                          }
-                        }}
-                      >
-                        <div style={{ fontWeight: 700, fontSize: 15, color: '#1976d2' }}>{formatKec(row.kode_kec)} - {row.kec_nama}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#1976d2', marginBottom: 2 }}>{formatKec(row.kode_kec)} - {row.kec_nama}</div>
+                      <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>
+                        <span style={{ color: '#888' }}>Kabupaten:</span> <b style={{ color: '#1976d2' }}>{row.kab_nama}</b> &nbsp;|&nbsp; <span style={{ color: '#888' }}>Provinsi:</span> <b style={{ color: '#1976d2' }}>{row.nama_prov}</b>
                       </div>
-                    </Tooltip>
+                    </div>
                   ))}
                 </div>
               </div>
             )}
             {results.desa.length > 0 && (
               <div>
-                <Text fw={600} mb={4}>Desa yang cocok:</Text>
+                <Text fw={600} size={'sm'} mb={4}>Desa yang cocok:</Text>
                 <div style={{ maxHeight: 'auto', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, position: 'relative' }}>
                   {results.desa.map((row, i) => (
-                    <Tooltip
+                    <div
                       key={i}
-                      label={<span>
-                        Provinsi: <b>{row.nama_prov}</b><br />
-                        Kabupaten: <b>{row.kab_nama}</b><br />
-                        Kecamatan: <b>{row.kec_nama}</b>
-                      </span>}
-                      position="top"
-                      withArrow
-                      color="#fff"
-                      style={{ color: '#444', fontSize: 13 }}
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: 10,
+                        border: '1px solid #e0e0e0',
+                        background: '#f8fbff',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        transition: 'background 0.2s',
+                        marginBottom: 4,
+                      }}
+                      onClick={() => {
+                        // Selalu isi ke kolom kddesa_etl (dan kdkec_etl, kdkab_etl, kdprov_etl jika ada)
+                        if (cell) {
+                          const extra: { [colName: string]: string } = {
+                            [getTargetCol('prov')]: formatProv(row.kode_prov),
+                            [getTargetCol('kab')]: formatKab(row.kode_kab),
+                            [getTargetCol('kec')]: formatKec(row.kode_kec),
+                            [getTargetCol('desa')]: formatDesa(row.kode_desa)
+                          };
+                          onSave(formatDesa(row.kode_desa), extra);
+                          onClose();
+                        }
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#e3f2fd'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#f8fbff'}
                     >
-                      <div
-                        style={{
-                          padding: '10px 12px',
-                          borderRadius: 8,
-                          border: '1px solid #e0e0e0',
-                          background: '#f8fbff',
-                          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-                          cursor: 'pointer',
-                          position: 'relative',
-                          transition: 'background 0.2s',
-                        }}
-                        onClick={() => {
-                          if (cell) {
-                            const extra: { [colName: string]: string } = {
-                              kdprov_etl: formatProv(row.kode_prov),
-                              kdkab_etl: formatKab(row.kode_kab),
-                              kdkec_etl: formatKec(row.kode_kec),
-                              kddesa_etl: formatDesa(row.kode_desa)
-                            };
-                            onSave(formatDesa(row.kode_desa), extra);
-                            onClose();
-                          }
-                        }}
-                      >
-                        <div style={{ fontWeight: 700, fontSize: 15, color: '#1976d2' }}>{formatDesa(row.kode_desa)} - {row.desa_nama}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#1976d2', marginBottom: 2 }}>{formatDesa(row.kode_desa)} - {row.desa_nama}</div>
+                      <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>
+                        <span style={{ color: '#888' }}>Kecamatan:</span> <b style={{ color: '#1976d2' }}>{row.kec_nama}</b> &nbsp;|&nbsp; <span style={{ color: '#888' }}>Kabupaten:</span> <b style={{ color: '#1976d2' }}>{row.kab_nama}</b> &nbsp;|&nbsp; <span style={{ color: '#888' }}>Provinsi:</span> <b style={{ color: '#1976d2' }}>{row.nama_prov}</b>
                       </div>
-                    </Tooltip>
+                    </div>
                   ))}
                 </div>
               </div>
