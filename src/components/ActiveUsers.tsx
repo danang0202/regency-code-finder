@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Badge, Group, Text, Avatar, Tooltip, Paper } from '@mantine/core';
 import { IconUsers } from '@tabler/icons-react';
-import { useSocket, UserJoinedEvent } from '@/hooks/useSocket';
+import { useSocket } from '@/hooks/useSocket';
 
 interface ActiveUsersProps {
   fileId: string;
@@ -20,9 +20,7 @@ export function ActiveUsers({ fileId }: ActiveUsersProps) {
   const { 
     isConnected, 
     joinFileRoom, 
-    leaveFileRoom, 
-    onUserJoined, 
-    onUserLeft,
+    leaveFileRoom,
     onActiveUsers 
   } = useSocket();
 
@@ -36,53 +34,33 @@ export function ActiveUsers({ fileId }: ActiveUsersProps) {
 
     // Listen for active users list (when joining)
     const unsubscribeActiveUsers = onActiveUsers((event) => {
-      console.log('ActiveUsers: Active users list received:', event);
+      console.log('👥 CLIENT: Active users list received:', event);
       if (event.fileId === fileId) {
         const users = event.users.map(user => ({
           id: user.userId,
           username: user.username,
           joinedAt: user.timestamp
         }));
-        console.log('ActiveUsers: Setting active users:', users);
-        setActiveUsers(users);
+        
+        // Deduplicate users by id
+        const uniqueUsers = users.filter((user, index, self) => 
+          index === self.findIndex(u => u.id === user.id)
+        );
+        
+        console.log('👥 CLIENT: Setting active users (deduplicated):', uniqueUsers);
+        setActiveUsers(uniqueUsers);
       }
     });
 
-    // Listen for users joining
-    const unsubscribeJoined = onUserJoined((event: UserJoinedEvent) => {
-      console.log('ActiveUsers: User joined event:', event);
-      setActiveUsers(prev => {
-        // Check if user already exists
-        if (prev.some(user => user.id === event.userId)) {
-          return prev;
-        }
-        const newUsers = [...prev, {
-          id: event.userId,
-          username: event.username,
-          joinedAt: event.timestamp
-        }];
-        console.log('ActiveUsers: Updated user list:', newUsers);
-        return newUsers;
-      });
-    });
-
-    // Listen for users leaving
-    const unsubscribeLeft = onUserLeft((event: UserJoinedEvent) => {
-      console.log('ActiveUsers: User left event:', event);
-      setActiveUsers(prev => {
-        const newUsers = prev.filter(user => user.id !== event.userId);
-        console.log('ActiveUsers: Updated user list after leave:', newUsers);
-        return newUsers;
-      });
-    });
+    // Note: We no longer listen to individual join/leave events
+    // Instead, we rely on the authoritative 'active-users' event from the server
+    // which contains the complete, deduplicated list of active users
 
     return () => {
       leaveFileRoom(fileId);
       unsubscribeActiveUsers();
-      unsubscribeJoined();
-      unsubscribeLeft();
     };
-  }, [isConnected, fileId, joinFileRoom, leaveFileRoom, onUserJoined, onUserLeft, onActiveUsers]);
+  }, [isConnected, fileId, joinFileRoom, leaveFileRoom, onActiveUsers]);
 
   if (!isConnected) {
     return (
