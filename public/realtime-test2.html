@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Test Client 2</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .connected { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .disconnected { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .log { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px; margin: 10px 0; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+        .log-entry { margin: 2px 0; padding: 2px 4px; }
+        .log-received { background: #e7f3ff; border-left: 3px solid #007bff; }
+        .log-sent { background: #fff3cd; border-left: 3px solid #ffc107; }
+        button { background: #007bff; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .user-list { background: #e9ecef; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .user-count { font-weight: bold; color: #495057; }
+        input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Real-time Test Client 2</h1>
+        <p>Client untuk test real-time collaboration sebagai user kedua</p>
+        
+        <div id="status" class="status disconnected">
+            ❌ Disconnected
+        </div>
+        
+        <div class="user-list">
+            <div class="user-count">Active Users: <span id="activeUsers">0</span></div>
+        </div>
+        
+        <div>
+            <button id="connectBtn">Connect</button>
+            <button id="disconnectBtn" disabled>Disconnect</button>
+            <button id="joinRoomBtn" disabled>Join File Room</button>
+            <button id="leaveRoomBtn" disabled>Leave Room</button>
+        </div>
+        
+        <div>
+            <h3>Simulate Save Action</h3>
+            <button id="simulateSaveBtn" disabled>Simulate Data Save (Emit Update)</button>
+        </div>
+        
+        <div>
+            <h3>Event Log</h3>
+            <button onclick="clearLog()">Clear Log</button>
+            <div id="log" class="log"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket = null;
+        const fileId = '06b23d22-416f-4460-8d0b-3c2096783e04';
+        const testUser = { id: 'test-user-2', username: 'Test User 2' };
+        
+        const statusEl = document.getElementById('status');
+        const logEl = document.getElementById('log');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const joinRoomBtn = document.getElementById('joinRoomBtn');
+        const leaveRoomBtn = document.getElementById('leaveRoomBtn');
+        const simulateSaveBtn = document.getElementById('simulateSaveBtn');
+        const activeUsersEl = document.getElementById('activeUsers');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.innerHTML = `[${timestamp}] ${message}`;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        function clearLog() {
+            logEl.innerHTML = '';
+        }
+        
+        function updateStatus(connected) {
+            if (connected) {
+                statusEl.className = 'status connected';
+                statusEl.innerHTML = '✅ Connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                joinRoomBtn.disabled = false;
+            } else {
+                statusEl.className = 'status disconnected';
+                statusEl.innerHTML = '❌ Disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                joinRoomBtn.disabled = true;
+                leaveRoomBtn.disabled = true;
+                simulateSaveBtn.disabled = true;
+            }
+        }
+        
+        connectBtn.onclick = () => {
+            socket = io({
+                auth: {
+                    user: testUser
+                }
+            });
+            
+            socket.on('connect', () => {
+                log('Connected to server', 'sent');
+                updateStatus(true);
+            });
+            
+            socket.on('disconnect', () => {
+                log('Disconnected from server', 'info');
+                updateStatus(false);
+            });
+            
+            // Listen for file updates
+            socket.on('file-updated', (data) => {
+                log(`📨 Received file-updated: ${JSON.stringify(data)}`, 'received');
+            });
+            
+            // Listen for active users
+            socket.on('active-users', (users) => {
+                activeUsersEl.textContent = users.length;
+                log(`👥 Active users updated: ${users.length} users`, 'received');
+            });
+            
+            socket.on('user-joined', (data) => {
+                log(`👋 User joined: ${data.username}`, 'received');
+            });
+            
+            socket.on('user-left', (data) => {
+                log(`👋 User left: ${data.username}`, 'received');
+            });
+        };
+        
+        disconnectBtn.onclick = () => {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+        };
+        
+        joinRoomBtn.onclick = () => {
+            if (socket) {
+                socket.emit('join-file', fileId);
+                log(`🚪 Joining file room: ${fileId}`, 'sent');
+                leaveRoomBtn.disabled = false;
+                simulateSaveBtn.disabled = false;
+            }
+        };
+        
+        leaveRoomBtn.onclick = () => {
+            if (socket) {
+                socket.emit('leave-file', fileId);
+                log(`🚪 Leaving file room: ${fileId}`, 'sent');
+                leaveRoomBtn.disabled = true;
+                simulateSaveBtn.disabled = true;
+            }
+        };
+        
+        simulateSaveBtn.onclick = () => {
+            if (socket) {
+                const updateData = {
+                    message: 'Data has been updated by Test User 2',
+                    timestamp: new Date().toISOString(),
+                    totalRows: 2781,
+                    simulatedBy: 'Test Client 2'
+                };
+                
+                socket.emit('file-updated', {
+                    fileId: fileId,
+                    userId: testUser.id,
+                    username: testUser.username,
+                    action: 'update',
+                    data: updateData,
+                    timestamp: new Date().toISOString()
+                });
+                
+                log(`📤 Simulated save - emitted file-updated: ${JSON.stringify(updateData)}`, 'sent');
+            }
+        };
+        
+        // Auto-connect on page load
+        // connectBtn.click();
+    </script>
+</body>
+</html>

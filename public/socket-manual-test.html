@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Manual Test</title>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <h1>Socket.IO Manual Test</h1>
+    <div id="status">Disconnected</div>
+    <div id="log"></div>
+    
+    <button onclick="emitFileUpdate()">Test File Update</button>
+    
+    <script>
+        const socket = io({
+            auth: {
+                sessionId: 'test-session'
+            }
+        });
+        
+        const statusDiv = document.getElementById('status');
+        const logDiv = document.getElementById('log');
+        
+        function log(message) {
+            logDiv.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+        }
+        
+        socket.on('connect', () => {
+            statusDiv.textContent = 'Connected: ' + socket.id;
+            log('Connected to socket server');
+            
+            // Join test file room
+            const fileId = '06b23d22-416f-4460-8d0b-3c2096783e04';
+            socket.emit('join-file', fileId);
+            log('Joined file room: ' + fileId);
+        });
+        
+        socket.on('disconnect', () => {
+            statusDiv.textContent = 'Disconnected';
+            log('Disconnected from socket server');
+        });
+        
+        socket.on('active-users', (data) => {
+            log('Active users received: ' + JSON.stringify(data));
+        });
+        
+        socket.on('user-joined', (data) => {
+            log('User joined: ' + JSON.stringify(data));
+        });
+        
+        socket.on('user-left', (data) => {
+            log('User left: ' + JSON.stringify(data));
+        });
+        
+        socket.on('file-updated', (data) => {
+            log('File updated: ' + JSON.stringify(data));
+        });
+        
+        function emitFileUpdate() {
+            const fileId = '06b23d22-416f-4460-8d0b-3c2096783e04';
+            socket.emit('file-updated', {
+                fileId: fileId,
+                action: 'update',
+                rowIndex: 0,
+                cellData: {
+                    newValue: 'TEST VALUE ' + Date.now(),
+                    oldValue: 'OLD VALUE',
+                    columnIndex: 0
+                }
+            });
+            log('Emitted file-updated event');
+        }
+    </script>
+</body>
+</html>
