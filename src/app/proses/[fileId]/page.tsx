@@ -6,6 +6,9 @@ import { IconDatabaseOff, IconDeviceFloppy, IconDisc, IconFileTypeXls } from '@t
 import CellDrawer from "../../../components/CellDrawer";
 import { IconSearch } from '@tabler/icons-react';
 import { MantineReactTable, MRT_GlobalFilterTextInput, MRT_ShowHideColumnsButton, MRT_ToggleFiltersButton, useMantineReactTable, type MRT_ColumnDef } from 'mantine-react-table';
+import { ActiveUsers } from "@/components/ActiveUsers";
+import { RealtimeNotifications } from "@/components/RealtimeNotifications";
+import { useSocket } from "@/hooks/useSocket";
 
 export default function ProsesDetailPage() {
   // ...existing code...
@@ -16,7 +19,10 @@ export default function ProsesDetailPage() {
   const [rows, setRows] = useState<string[][]>([]);
   const [allRows, setAllRows] = useState<string[][]>([]); // Menyimpan semua data untuk auto-save
   const [loading, setLoading] = useState(true);
+  const [silentLoading, setSilentLoading] = useState(false);
   const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null);
+  
+  // Track specific cell changes for incremental updates (using existing pendingChanges)
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelValue, setPanelValue] = useState("");
   const [panelCell, setPanelCell] = useState<{ row: number; col: number } | null>(null);
@@ -24,33 +30,113 @@ export default function ProsesDetailPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalRows, setTotalRows] = useState(0);
   const [hasChanges, setHasChanges] = useState(false);
+  const [pendingChanges, setPendingChanges] = useState<{ [key: string]: { rowIndex: number; columnIndex: number; oldValue: string; newValue: string } }>({});
   const limit = 10;
 
+  // Socket.IO integration
+  const { 
+    isConnected, 
+    joinFileRoom, 
+    leaveFileRoom, 
+    emitFileUpdate, 
+    onFileUpdated 
+  } = useSocket();
+
   const saveChanges = useCallback(async () => {
-    if (!hasChanges || !fileId) return;
+    if (!hasChanges || !fileId || Object.keys(pendingChanges).length === 0) return;
     try {
-      const response = await fetch(`/v2/api/file/${fileId}`, {
+      // Send only the specific changes, not the entire dataset
+      const response = await fetch(`/v2/api/file/${fileId}/update-cells`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          header,
-          allRows
+          changes: Object.values(pendingChanges)
         }),
       });
       if (response.ok) {
         setHasChanges(false);
+        setPendingChanges({}); // Clear pending changes after successful save
+        
+                  // Emit real-time update to notify other users that data has been saved
+        if (isConnected) {
+          const changes = Object.values(pendingChanges);
+          console.log(`Data saved, emitting ${changes.length} cell changes to other users`);
+          
+          // Add visual confirmation
+          const successDiv = document.createElement('div');
+          successDiv.innerHTML = `✅ ${changes.length} perubahan tersimpan & dikirim`;
+          successDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            z-index: 10001;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border: 1px solid rgba(255,255,255,0.2);
+            animation: slideInRight 0.3s ease-out;
+          `;
+          
+          // Add CSS animation for success notification
+          if (!document.getElementById('success-animations')) {
+            const style = document.createElement('style');
+            style.id = 'success-animations';
+            style.textContent = `
+              @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+              }
+              @keyframes slideOutRight {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+              }
+            `;
+            document.head.appendChild(style);
+          }
+          
+          document.body.appendChild(successDiv);
+          
+          // Smooth fade out
+          setTimeout(() => {
+            successDiv.style.animation = 'slideOutRight 0.3s ease-in';
+            setTimeout(() => {
+              if (document.body.contains(successDiv)) {
+                document.body.removeChild(successDiv);
+              }
+            }, 300);
+          }, 2500);
+          
+          // Emit specific cell changes for each change made
+          changes.forEach(change => {
+            emitFileUpdate(fileId as string, 'update', {
+              rowIndex: change.rowIndex,
+              columnIndex: change.columnIndex,
+              oldValue: change.oldValue,
+              newValue: change.newValue,
+              timestamp: new Date().toISOString()
+            }, change.rowIndex);
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to save data:', error);
     }
-  }, [fileId, header, allRows]);
+  }, [fileId, pendingChanges, hasChanges, isConnected, emitFileUpdate]);
 
   // Fetch data with pagination
-  const fetchData = useCallback(async (page = 1, filters = activeFilters) => {
+  const fetchData = useCallback(async (page = 1, filters = activeFilters, silent = false) => {
     if (!fileId) return;
-    setLoading(true);
+    if (!silent) {
+      setLoading(true);
+    } else {
+      setSilentLoading(true);
+    }
     try {
       // Build filter query string
       const filterQuery = Object.entries(filters)
@@ -80,8 +166,190 @@ export default function ProsesDetailPage() {
       console.error('Failed to fetch data:', error);
       setRows([]);
     }
-    setLoading(false);
+    if (!silent) {
+      setLoading(false);
+    } else {
+      setSilentLoading(false);
+    }
   }, [fileId, activeFilters, allRows.length]);
+
+  // Join socket room when file opens
+  useEffect(() => {
+    if (fileId && isConnected) {
+      joinFileRoom(fileId as string);
+      
+      return () => {
+        leaveFileRoom(fileId as string);
+      };
+    }
+  }, [fileId, isConnected, joinFileRoom, leaveFileRoom]);
+
+  // Listen for real-time updates from other users
+  useEffect(() => {
+    if (!fileId) return;
+    
+    // Batch notifications for multiple rapid updates
+    const updateBatch: Array<{ username: string; rowIndex: number; columnIndex: number; newValue: string }> = [];
+    let batchTimeout: NodeJS.Timeout | null = null;
+    
+    const showBatchNotification = () => {
+      if (updateBatch.length === 0) return;
+      
+      const username = updateBatch[0].username;
+      const notificationDiv = document.createElement('div');
+      
+      if (updateBatch.length === 1) {
+        const { rowIndex, columnIndex } = updateBatch[0];
+        const cellName = header[columnIndex]?.replace(/^['"]|['"]$/g, "") || `Col ${columnIndex}`;
+        notificationDiv.innerHTML = `📝 ${username} mengubah "${cellName}" di baris ${rowIndex + 1}`;
+      } else {
+        notificationDiv.innerHTML = `📝 ${username} mengubah ${updateBatch.length} cell sekaligus`;
+      }
+      
+      notificationDiv.style.cssText = `
+        position: fixed;
+        top: 80px;
+        left: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        z-index: 10001;
+        font-weight: 600;
+        font-size: 14px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border: 1px solid rgba(255,255,255,0.2);
+        animation: slideInLeft 0.3s ease-out;
+      `;
+      
+      document.body.appendChild(notificationDiv);
+      
+      // Smooth fade out
+      setTimeout(() => {
+        notificationDiv.style.animation = 'slideOutLeft 0.3s ease-in';
+        setTimeout(() => {
+          if (document.body.contains(notificationDiv)) {
+            document.body.removeChild(notificationDiv);
+          }
+        }, 300);
+      }, 3500);
+      
+      // Clear batch
+      updateBatch.length = 0;
+      batchTimeout = null;
+    };
+
+    const unsubscribe = onFileUpdated((event) => {
+      console.log('Received file update:', event);
+      
+        // Apply specific cell changes if provided, otherwise fallback to full refresh
+      if (event.data && typeof event.data.rowIndex === 'number' && typeof event.data.columnIndex === 'number' && typeof event.data.newValue === 'string') {
+        const { rowIndex: globalRowIndex, columnIndex, newValue } = event.data as { rowIndex: number; columnIndex: number; newValue: string };
+        const pageRowIndex = globalRowIndex - (currentPage - 1) * limit;
+        
+        // Update the specific cell if it's on current page
+        if (pageRowIndex >= 0 && pageRowIndex < rows.length && columnIndex >= 0 && columnIndex < header.length) {
+          console.log(`Applying specific cell update: row ${globalRowIndex} (page row ${pageRowIndex}), col ${columnIndex}, value: ${newValue}`);
+          
+          // Update current page rows
+          setRows(prevRows => {
+            const newRows = [...prevRows];
+            newRows[pageRowIndex][columnIndex] = newValue;
+            return newRows;
+          });
+          
+          // Update allRows as well
+          setAllRows(prevAllRows => {
+            const newAllRows = [...prevAllRows];
+            if (newAllRows[globalRowIndex]) {
+              newAllRows[globalRowIndex][columnIndex] = newValue;
+            }
+            return newAllRows;
+          });
+        }
+        
+        // Show specific cell update notification
+        const notificationDiv = document.createElement('div');
+        const cellName = header[columnIndex]?.replace(/^['"]|['"]$/g, "") || `Col ${columnIndex}`;
+        notificationDiv.innerHTML = `� ${event.username || 'User lain'} mengubah "${cellName}" di baris ${globalRowIndex + 1}`;
+        notificationDiv.style.cssText = `
+          position: fixed;
+          top: 80px;
+          left: 20px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 12px 16px;
+          border-radius: 8px;
+          z-index: 10001;
+          font-weight: 600;
+          font-size: 14px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          border: 1px solid rgba(255,255,255,0.2);
+          animation: slideInLeft 0.3s ease-out;
+        `;
+        
+        // Add CSS animation if not exists
+        if (!document.getElementById('realtime-animations')) {
+          const style = document.createElement('style');
+          style.id = 'realtime-animations';
+          style.textContent = `
+            @keyframes slideInLeft {
+              from { transform: translateX(-100%); opacity: 0; }
+              to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOutLeft {
+              from { transform: translateX(0); opacity: 1; }
+              to { transform: translateX(-100%); opacity: 0; }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(notificationDiv);
+        
+        // Smooth fade out
+        setTimeout(() => {
+          notificationDiv.style.animation = 'slideOutLeft 0.3s ease-in';
+          setTimeout(() => {
+            if (document.body.contains(notificationDiv)) {
+              document.body.removeChild(notificationDiv);
+            }
+          }, 300);
+        }, 3500);
+        
+      } else {
+        // Fallback: show generic notification and refresh data
+        const notificationDiv = document.createElement('div');
+        notificationDiv.innerHTML = `🔄 Data diperbarui oleh ${event.username || 'user lain'}`;
+        notificationDiv.style.cssText = `
+          position: fixed;
+          top: 80px;
+          left: 20px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 12px 16px;
+          border-radius: 8px;
+          z-index: 10001;
+          font-weight: 600;
+          font-size: 14px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          border: 1px solid rgba(255,255,255,0.2);
+          animation: slideInLeft 0.3s ease-out;
+        `;
+        
+        document.body.appendChild(notificationDiv);
+        setTimeout(() => {
+          notificationDiv.style.animation = 'slideOutLeft 0.3s ease-in';
+          setTimeout(() => document.body.contains(notificationDiv) && document.body.removeChild(notificationDiv), 300);
+        }, 3500);
+        
+        // Refresh data silently without showing loading overlay
+        fetchData(currentPage, activeFilters, true);
+      }
+    });
+
+    return unsubscribe;
+  }, [fileId, onFileUpdated, currentPage, activeFilters, fetchData, header, rows.length]);
 
   useEffect(() => {
     if (fileId) {
@@ -132,20 +400,41 @@ export default function ProsesDetailPage() {
               onChange={e => setEditValue(e.target.value)}
               onBlur={() => {
                 setEditing(false);
-                setRows(prevRows => {
-                  const newRows = [...prevRows];
-                  newRows[row.index][idx] = editValue;
-                  return newRows;
-                });
-                setAllRows(prevAllRows => {
-                  const newAllRows = [...prevAllRows];
+                const oldValue = value;
+                if (oldValue !== editValue) {
                   const globalRowIndex = (currentPage - 1) * limit + row.index;
-                  if (newAllRows[globalRowIndex]) {
-                    newAllRows[globalRowIndex][idx] = editValue;
-                  }
-                  return newAllRows;
-                });
-                setHasChanges(true);
+                  
+                  // Update rows display
+                  setRows(prevRows => {
+                    const newRows = [...prevRows];
+                    newRows[row.index][idx] = editValue;
+                    return newRows;
+                  });
+                  
+                  // Update allRows for complete data
+                  setAllRows(prevAllRows => {
+                    const newAllRows = [...prevAllRows];
+                    if (newAllRows[globalRowIndex]) {
+                      newAllRows[globalRowIndex][idx] = editValue;
+                    }
+                    return newAllRows;
+                  });
+                  
+                  // Track this specific change for incremental updates
+                  const changeKey = `${globalRowIndex}-${idx}`;
+                  setPendingChanges(prevChanges => ({
+                    ...prevChanges,
+                    [changeKey]: {
+                      rowIndex: globalRowIndex,
+                      columnIndex: idx,
+                      oldValue,
+                      newValue: editValue
+                    }
+                  }));
+                  
+                  setHasChanges(true);
+                  console.log(`Cell change tracked: row ${globalRowIndex}, col ${idx}, ${oldValue} → ${editValue}`);
+                }
               }}
               onKeyDown={e => {
                 if (e.key === 'Enter') {
@@ -298,6 +587,14 @@ export default function ProsesDetailPage() {
       <Container size="xl" py={'xs'} style={{ maxWidth: '98vw', position: 'relative' }}>
         {header.length > 0 ? (
           <>
+            {/* Real-time components */}
+            <Group position="apart" mb="md">
+              <div>
+                <Text size="lg" weight={500}>File: {fileId}</Text>
+              </div>
+              <ActiveUsers fileId={fileId as string} />
+            </Group>
+            
             <MantineReactTable table={table} />
             <Modal
               opened={filterModalOpen}
@@ -383,6 +680,7 @@ export default function ProsesDetailPage() {
                       }
 
                       // Update current page data
+                      const oldValue = newRows[panelCell.row][colIdx] || '';
                       newRows[panelCell.row][colIdx] = kodeValue;
 
                       // Update allRows untuk auto-save
@@ -397,6 +695,20 @@ export default function ProsesDetailPage() {
                         }
                         return newAllRows;
                       });
+
+                      // Track this change for incremental updates
+                      const globalRowIndex = (currentPage - 1) * limit + panelCell.row;
+                      const changeKey = `${globalRowIndex}-${colIdx}`;
+                      setPendingChanges(prevChanges => ({
+                        ...prevChanges,
+                        [changeKey]: {
+                          rowIndex: globalRowIndex,
+                          columnIndex: colIdx,
+                          oldValue,
+                          newValue: kodeValue
+                        }
+                      }));
+                      console.log(`CellDrawer change tracked (extra): row ${globalRowIndex}, col ${colIdx}, ${oldValue} → ${kodeValue}`);
                     });
 
                     if (changed) {
@@ -404,6 +716,7 @@ export default function ProsesDetailPage() {
                     }
                   } else {
                     // Jika tidak ada extra, isi cell awal drawer
+                    const oldValue = newRows[panelCell.row][panelCell.col] || '';
                     newRows[panelCell.row][panelCell.col] = newValue;
 
                     // Update allRows untuk auto-save
@@ -415,6 +728,20 @@ export default function ProsesDetailPage() {
                       }
                       return newAllRows;
                     });
+
+                    // Track this change for incremental updates
+                    const globalRowIndex = (currentPage - 1) * limit + panelCell.row;
+                    const changeKey = `${globalRowIndex}-${panelCell.col}`;
+                    setPendingChanges(prevChanges => ({
+                      ...prevChanges,
+                      [changeKey]: {
+                        rowIndex: globalRowIndex,
+                        columnIndex: panelCell.col,
+                        oldValue,
+                        newValue
+                      }
+                    }));
+                    console.log(`CellDrawer change tracked (main): row ${globalRowIndex}, col ${panelCell.col}, ${oldValue} → ${newValue}`);
                   }
 
                   setRows(newRows);
@@ -440,6 +767,28 @@ export default function ProsesDetailPage() {
                 <Loader size="lg" variant="dots" />
               </div>
             )}
+            
+            {silentLoading && (
+              <div style={{
+                position: 'fixed',
+                top: '20px',
+                right: '20px',
+                background: 'rgba(0,123,255,0.9)',
+                color: 'white',
+                padding: '8px 16px',
+                borderRadius: '20px',
+                zIndex: 10000,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+              }}>
+                <Loader size="sm" color="white" />
+                Memperbarui data...
+              </div>
+            )}
           </>
         ) : (
           <Center style={{ minHeight: '40vh' }}>
@@ -458,6 +807,9 @@ export default function ProsesDetailPage() {
           </Center>
         )}
       </Container>
+      
+      {/* Real-time notifications */}
+      <RealtimeNotifications fileId={fileId as string} />
     </div>
   );
 }

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Test Client</title>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <h1>Socket.IO Test Client</h1>
+    <div id="status">Disconnected</div>
+    <div id="log"></div>
+    
+    <script>
+        const socket = io({
+            auth: {
+                sessionId: 'test-session'
+            }
+        });
+        
+        const statusDiv = document.getElementById('status');
+        const logDiv = document.getElementById('log');
+        
+        function log(message) {
+            logDiv.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+        }
+        
+        socket.on('connect', () => {
+            statusDiv.textContent = 'Connected: ' + socket.id;
+            log('Connected to socket server');
+            
+            // Join test file room
+            const fileId = 'c8b3bf8d-d275-493a-b541-986d02e1bb31';
+            socket.emit('join-file', fileId);
+            log('Joined file room: ' + fileId);
+        });
+        
+        socket.on('disconnect', () => {
+            statusDiv.textContent = 'Disconnected';
+            log('Disconnected from socket server');
+        });
+        
+        socket.on('active-users', (data) => {
+            log('Active users received: ' + JSON.stringify(data));
+        });
+        
+        socket.on('user-joined', (data) => {
+            log('User joined: ' + JSON.stringify(data));
+        });
+        
+        socket.on('user-left', (data) => {
+            log('User left: ' + JSON.stringify(data));
+        });
+        
+        socket.on('file-updated', (data) => {
+            log('File updated: ' + JSON.stringify(data));
+        });
+    </script>
+</body>
+</html>
