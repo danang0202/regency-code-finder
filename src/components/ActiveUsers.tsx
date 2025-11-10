@@ -106,7 +106,7 @@ export function ActiveUsers({ fileId }: ActiveUsersProps) {
         {activeUsers.length > 0 && (
           <Group spacing="xs">
             {activeUsers.slice(0, 5).map((user, index) => (
-              <Tooltip key={user.id} label={user.username} withArrow>
+              <Tooltip key={index} label={user.username} withArrow>
                 <Avatar
                   size="sm"
                   radius="xl"

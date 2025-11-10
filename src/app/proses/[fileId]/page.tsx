@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { Text, Loader, Container, ActionIcon, Pagination, Group, Paper, Center, Stack, Button, Modal, Checkbox, Select } from "@mantine/core";
-import { IconDatabaseOff, IconDeviceFloppy, IconDisc, IconFileTypeXls } from '@tabler/icons-react';
+import { Text, Loader, Container, ActionIcon, Pagination, Group, Paper, Center, Stack, Button, Modal, Select } from "@mantine/core";
+import { IconDatabaseOff, IconDeviceFloppy, IconFileTypeXls } from '@tabler/icons-react';
 import CellDrawer from "../../../components/CellDrawer";
 import { IconSearch } from '@tabler/icons-react';
-import { MantineReactTable, MRT_GlobalFilterTextInput, MRT_ShowHideColumnsButton, MRT_ToggleFiltersButton, useMantineReactTable, type MRT_ColumnDef } from 'mantine-react-table';
+import { MantineReactTable, MRT_ShowHideColumnsButton, MRT_ToggleFiltersButton, useMantineReactTable, type MRT_ColumnDef } from 'mantine-react-table';
 import { ActiveUsers } from "@/components/ActiveUsers";
 import { RealtimeNotifications } from "@/components/RealtimeNotifications";
 import { useSocket } from "@/hooks/useSocket";
@@ -41,6 +41,8 @@ export default function ProsesDetailPage() {
     emitFileUpdate, 
     onFileUpdated 
   } = useSocket();
+
+
 
   const saveChanges = useCallback(async () => {
     if (!hasChanges || !fileId || Object.keys(pendingChanges).length === 0) return;
@@ -94,7 +96,7 @@ export default function ProsesDetailPage() {
               }
               @keyframes slideOutRight {
                 from { transform: translateX(0); opacity: 1; }
-                to { transform: translateX(100%); opacity: 0; }
+                to { translate: translateX(100%); opacity: 0; }
               }
             `;
             document.head.appendChild(style);
@@ -188,56 +190,7 @@ export default function ProsesDetailPage() {
   useEffect(() => {
     if (!fileId) return;
     
-    // Batch notifications for multiple rapid updates
-    const updateBatch: Array<{ username: string; rowIndex: number; columnIndex: number; newValue: string }> = [];
-    let batchTimeout: NodeJS.Timeout | null = null;
-    
-    const showBatchNotification = () => {
-      if (updateBatch.length === 0) return;
-      
-      const username = updateBatch[0].username;
-      const notificationDiv = document.createElement('div');
-      
-      if (updateBatch.length === 1) {
-        const { rowIndex, columnIndex } = updateBatch[0];
-        const cellName = header[columnIndex]?.replace(/^['"]|['"]$/g, "") || `Col ${columnIndex}`;
-        notificationDiv.innerHTML = `📝 ${username} mengubah "${cellName}" di baris ${rowIndex + 1}`;
-      } else {
-        notificationDiv.innerHTML = `📝 ${username} mengubah ${updateBatch.length} cell sekaligus`;
-      }
-      
-      notificationDiv.style.cssText = `
-        position: fixed;
-        top: 80px;
-        left: 20px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 12px 16px;
-        border-radius: 8px;
-        z-index: 10001;
-        font-weight: 600;
-        font-size: 14px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        border: 1px solid rgba(255,255,255,0.2);
-        animation: slideInLeft 0.3s ease-out;
-      `;
-      
-      document.body.appendChild(notificationDiv);
-      
-      // Smooth fade out
-      setTimeout(() => {
-        notificationDiv.style.animation = 'slideOutLeft 0.3s ease-in';
-        setTimeout(() => {
-          if (document.body.contains(notificationDiv)) {
-            document.body.removeChild(notificationDiv);
-          }
-        }, 300);
-      }, 3500);
-      
-      // Clear batch
-      updateBatch.length = 0;
-      batchTimeout = null;
-    };
+
 
     const unsubscribe = onFileUpdated((event) => {
       console.log('Received file update:', event);
@@ -350,6 +303,30 @@ export default function ProsesDetailPage() {
 
     return unsubscribe;
   }, [fileId, onFileUpdated, currentPage, activeFilters, fetchData, header, rows.length]);
+
+  // Keyboard shortcut handler for Ctrl+S / Cmd+S
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check for Ctrl+S (Windows/Linux) or Cmd+S (Mac)
+      if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+        event.preventDefault(); // Prevent browser's default save dialog
+        
+        // Only save if there are changes
+        if (hasChanges && Object.keys(pendingChanges).length > 0) {
+          console.log('Keyboard shortcut triggered save');
+          saveChanges();
+        }
+      }
+    };
+
+    // Add event listener to document
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup event listener on component unmount
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [hasChanges, pendingChanges, saveChanges]);
 
   useEffect(() => {
     if (fileId) {
@@ -539,8 +516,9 @@ export default function ProsesDetailPage() {
               onClick={saveChanges}
               loading={loading}
               disabled={!hasChanges}
+              title={`Simpan (${navigator.platform.includes('Mac') ? '⌘+S' : 'Ctrl+S'})`}
             >
-              Simpan
+              Simpan {hasChanges && <span style={{ fontSize: '11px', opacity: 0.8, marginLeft: '4px' }}>({navigator.platform.includes('Mac') ? '⌘+S' : 'Ctrl+S'})</span>}
             </Button>
             <Button
               size="sm"
