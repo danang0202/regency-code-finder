@@ -2,6 +2,7 @@ import { Drawer, Text, Divider, Box } from "@mantine/core";
 import { IconSearch, IconCommand, IconKeyboard } from '@tabler/icons-react';
 import { formatProv, formatKab, formatKec, formatDesa, getTargetCol } from "../helper/kode-wilayah.helper";
 import { useEffect, useRef, useState } from "react";
+import { useDebouncedValue } from "@mantine/hooks";
 
 interface MasterResult {
   provinsi: Array<{ kode_prov: string; nama_prov: string }>;
@@ -21,7 +22,7 @@ interface Props {
 export default function CellDrawer({ opened, onClose, value, cell, onSave }: Props) {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState(value);
-  const [debouncedSearch, setDebouncedSearch] = useState(value);
+  const [debouncedSearch] = useDebouncedValue(search, 500);
   const [results, setResults] = useState<MasterResult | null>(null);
 
   useEffect(() => {
@@ -48,15 +49,9 @@ export default function CellDrawer({ opened, onClose, value, cell, onSave }: Pro
 
   useEffect(() => {
     setSearch(value);
-    setDebouncedSearch(value);
   }, [value]);
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 400);
-    return () => clearTimeout(handler);
-  }, [search]);
+  // debouncedSearch handled by useDebounced
 
 
   useEffect(() => {
@@ -69,6 +64,7 @@ export default function CellDrawer({ opened, onClose, value, cell, onSave }: Pro
       .then((data: MasterResult | null) => {
         setResults(data);
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
 

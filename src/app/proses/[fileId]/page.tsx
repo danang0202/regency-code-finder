@@ -1,13 +1,16 @@
 "use client";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { Text, Loader, Container, ActionIcon, Pagination, Group, Paper, Center, Stack, Button } from "@mantine/core";
+import { Text, Loader, Container, ActionIcon, Pagination, Group, Paper, Center, Stack, Button, Modal, Checkbox, Select } from "@mantine/core";
 import { IconDatabaseOff, IconDeviceFloppy, IconDisc, IconFileTypeXls } from '@tabler/icons-react';
 import CellDrawer from "../../../components/CellDrawer";
 import { IconSearch } from '@tabler/icons-react';
 import { MantineReactTable, MRT_GlobalFilterTextInput, MRT_ShowHideColumnsButton, MRT_ToggleFiltersButton, useMantineReactTable, type MRT_ColumnDef } from 'mantine-react-table';
 
 export default function ProsesDetailPage() {
+  // ...existing code...
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<{ [colIdx: number]: string }>({});
   const { fileId } = useParams();
   const [header, setHeader] = useState<string[]>([]);
   const [rows, setRows] = useState<string[][]>([]);
@@ -45,11 +48,17 @@ export default function ProsesDetailPage() {
   }, [fileId, header, allRows]);
 
   // Fetch data with pagination
-  const fetchData = useCallback(async (page = 1) => {
+  const fetchData = useCallback(async (page = 1, filters = activeFilters) => {
     if (!fileId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/v2/api/file/${fileId}?page=${page}&limit=${limit}`);
+      // Build filter query string
+      const filterQuery = Object.entries(filters)
+        .filter(([, v]) => v)
+        .map(([colIdx, value]) => `filter[${colIdx}]=${encodeURIComponent(value)}`)
+        .join('&');
+      const url = `/v2/api/file/${fileId}?page=${page}&limit=${limit}${filterQuery ? `&${filterQuery}` : ''}`;
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setHeader(data.header || []);
@@ -58,8 +67,8 @@ export default function ProsesDetailPage() {
         setTotalPages(data.totalPages || 0);
         setCurrentPage(page);
 
-        // Load all data untuk auto-save hanya sekali saat load awal
-        if (page === 1 && allRows.length === 0 && data.totalRows > 0) {
+        // Load all data untuk auto-save hanya sekali saat load awal (tanpa filter)
+        if (page === 1 && allRows.length === 0 && data.totalRows > 0 && Object.keys(filters).length === 0) {
           const allRes = await fetch(`/v2/api/file/${fileId}?page=1&limit=${data.totalRows}`);
           if (allRes.ok) {
             const allData = await allRes.json();
@@ -72,18 +81,26 @@ export default function ProsesDetailPage() {
       setRows([]);
     }
     setLoading(false);
-  }, [fileId]);
+  }, [fileId, activeFilters, allRows.length]);
 
   useEffect(() => {
     if (fileId) {
       fetchData(1);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fileId]);
 
+  // Refetch data when filters change
+  useEffect(() => {
+    if (fileId) {
+      fetchData(1, activeFilters);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFilters]);
   // Handle page change dengan auto-save
   const handlePageChange = async (page: number) => {
     await saveChanges();
-    await fetchData(page);
+    await fetchData(page, activeFilters);
   };
 
   // Define table columns
@@ -173,17 +190,16 @@ export default function ProsesDetailPage() {
     [header, hoveredCell, currentPage, limit]
   );
 
-  // Table data
-  const tableData = useMemo(() =>
-    rows.map((row) => {
+  // Table data: use backend-paginated rows only
+  const tableData = useMemo(() => {
+    return rows.map((row) => {
       const obj: Record<string, string> = {};
       row.forEach((cell, idx) => {
         obj[`col${idx}`] = cell || "";
       });
       return obj;
-    }),
-    [rows]
-  );
+    });
+  }, [rows]);
 
   // Configure table instance
   const table = useMantineReactTable({
@@ -222,6 +238,9 @@ export default function ProsesDetailPage() {
           <Group>
             <MRT_ShowHideColumnsButton table={table} />
             <MRT_ToggleFiltersButton table={table} />
+            <Button size="sm" variant="outline" onClick={() => setFilterModalOpen(true)}>
+              Filter Data
+            </Button>
           </Group>
           <Group>
             <Button
@@ -261,7 +280,7 @@ export default function ProsesDetailPage() {
                     window.URL.revokeObjectURL(url);
                     document.body.removeChild(a);
                   }, 100);
-                } catch (err) {
+                } catch {
                   // Optionally show error
                 }
               }}
@@ -280,6 +299,36 @@ export default function ProsesDetailPage() {
         {header.length > 0 ? (
           <>
             <MantineReactTable table={table} />
+            <Modal
+              opened={filterModalOpen}
+              onClose={() => setFilterModalOpen(false)}
+              title="Filter Data"
+              size="md"
+            >
+              <Stack>
+                {header.map((col, idx) => (
+                  <Select
+                    key={idx}
+                    label={col.replace(/^['"]|['"]$/g, "")}
+                    placeholder={`Pilih nilai untuk ${col}`}
+                    data={Array.from(new Set(allRows.map(row => row[idx]).filter(Boolean))).map(v => ({ value: v, label: v }))}
+                    value={activeFilters[idx] || ''}
+                    onChange={val => {
+                      setActiveFilters(f => ({ ...f, [idx]: val || '' }));
+                    }}
+                    clearable
+                  />
+                ))}
+                <Group position="right">
+                  <Button size="sm" onClick={() => { setFilterModalOpen(false); }}>
+                    Terapkan
+                  </Button>
+                  <Button size="sm" variant="outline" color="red" onClick={() => { setActiveFilters({}); setFilterModalOpen(false); }}>
+                    Reset
+                  </Button>
+                </Group>
+              </Stack>
+            </Modal>
 
             <Group position="apart">
               <div>
