@@ -26,7 +26,7 @@ export default function ProsesDetailPage() {
   const saveChanges = useCallback(async () => {
     if (!hasChanges || !fileId) return;
     try {
-      const response = await fetch(`/api/file/${fileId}`, {
+      const response = await fetch(`/v2/api/file/${fileId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -49,7 +49,7 @@ export default function ProsesDetailPage() {
     if (!fileId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/file/${fileId}?page=${page}&limit=${limit}`);
+      const res = await fetch(`/v2/api/file/${fileId}?page=${page}&limit=${limit}`);
       if (res.ok) {
         const data = await res.json();
         setHeader(data.header || []);
@@ -60,7 +60,7 @@ export default function ProsesDetailPage() {
 
         // Load all data untuk auto-save hanya sekali saat load awal
         if (page === 1 && allRows.length === 0 && data.totalRows > 0) {
-          const allRes = await fetch(`/api/file/${fileId}?page=1&limit=${data.totalRows}`);
+          const allRes = await fetch(`/v2/api/file/${fileId}?page=1&limit=${data.totalRows}`);
           if (allRes.ok) {
             const allData = await allRes.json();
             setAllRows(allData.rows || []);
@@ -242,7 +242,7 @@ export default function ProsesDetailPage() {
               onClick={async () => {
                 if (!fileId) return;
                 try {
-                  const res = await fetch(`/api/file/${fileId}/download`);
+                  const res = await fetch(`/v2/api/file/${fileId}/download`);
                   if (!res.ok) return;
                   const blob = await res.blob();
                   let filename = `data_${fileId}.csv`;
