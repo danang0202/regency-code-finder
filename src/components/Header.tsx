@@ -1,12 +1,15 @@
 "use client";
 
 import React from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { Group, Header as MantineHeader, Container, Avatar, Menu, Text, Button } from "@mantine/core";
 import { IconLogout, IconLogin } from "@tabler/icons-react";
 import { useAuth } from "./auth/AuthProvider";
 
 export default function Header() {
   const { user, isAuthenticated, logout, isLoading } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const handleLogout = async () => {
     try {
@@ -25,6 +28,8 @@ export default function Header() {
     }
   };
 
+  const isActive = (path: string) => pathname === path;
+
   return (
     <MantineHeader height={64} px="md">
       <Container size="lg" style={{ height: "100%" }}>
@@ -34,9 +39,18 @@ export default function Header() {
           </Group>
 
           <Group spacing={16}>
-            <Text>Home</Text>
-            <Text>Upload</Text>
-            <Text>About</Text>
+            <Text
+              style={{ cursor: "pointer", fontWeight: isActive("/") ? 600 : 400 }}
+              onClick={() => router.push("/")}
+            >
+              Upload
+            </Text>
+            <Text
+              style={{ cursor: "pointer", fontWeight: isActive("/list") ? 600 : 400 }}
+              onClick={() => router.push("/list")}
+            >
+              List
+            </Text>
           </Group>
 
           {isLoading ? (
