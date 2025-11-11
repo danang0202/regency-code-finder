@@ -130,7 +130,8 @@ export default function UploadDocument() {
                 if (!fileObj) return;
                 const uuid = uuidv4();
                 const data = new FormData();
-                data.append('file', fileObj, uuid);
+                data.append('file', fileObj); // biarkan nama asli
+                data.append('uuid', uuid);    // uuid dikirim terpisah
                 data.append('originalName', fileObj.name);
                 data.append('separator', isCsv ? separator : '');
                 data.append('fileType', isCsv ? 'csv' : 'excel');
