@@ -23,7 +23,7 @@ export function normalizeValue(value: string | number | null | undefined): strin
 }
 
 /**
- * Parse CSV file content
+ * Parse CSV file content and add row_index column
  */
 export async function parseCsvFile(filePath: string, separator: string): Promise<ParsedFileData> {
   const text = await readFile(filePath, "utf-8");
@@ -33,14 +33,24 @@ export async function parseCsvFile(filePath: string, separator: string): Promise
   }
 
   const lines = text.split(/\r?\n/).filter(Boolean);
-  const header = lines[0].split(separator);
-  const dataRows = lines.slice(1).map(l => l.split(separator));
+  const originalHeader = lines[0].split(separator);
+  const originalDataRows = lines.slice(1).map(l => l.split(separator));
+
+  // Check if row_index already exists
+  if (originalHeader[0] === 'row_index') {
+    // row_index already exists, return as is
+    return { header: originalHeader, dataRows: originalDataRows };
+  }
+
+  // Add row_index column as first column only if it doesn't exist
+  const header = ['row_index', ...originalHeader];
+  const dataRows = originalDataRows.map((row, index) => [String(index + 1), ...row]);
 
   return { header, dataRows };
 }
 
 /**
- * Parse Excel file content
+ * Parse Excel file content and add row_index column
  */
 export async function parseExcelFile(filePath: string): Promise<ParsedFileData> {
   const fileBuffer = await readFile(filePath);
@@ -53,8 +63,18 @@ export async function parseExcelFile(filePath: string): Promise<ParsedFileData> 
     return { header: [], dataRows: [] };
   }
 
-  const header = data[0];
-  const dataRows = data.slice(1);
+  const originalHeader = data[0];
+  const originalDataRows = data.slice(1);
+
+  // Check if row_index already exists
+  if (originalHeader[0] === 'row_index') {
+    // row_index already exists, return as is
+    return { header: originalHeader, dataRows: originalDataRows };
+  }
+
+  // Add row_index column as first column only if it doesn't exist
+  const header = ['row_index', ...originalHeader];
+  const dataRows = originalDataRows.map((row, index) => [String(index + 1), ...row]);
 
   return { header, dataRows };
 }

@@ -12,7 +12,7 @@ import {
 import { writeFile_custom } from "@/helper/file-writing.helper";
 
 interface CellChange {
-  rowIndex: number;
+  rowIndex: string; // Use row_index (string) instead of array index (number)
   columnIndex: number;
   oldValue: string;
   newValue: string;
@@ -47,26 +47,34 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ uuid:
     for (const change of changes) {
       const { rowIndex, columnIndex, oldValue, newValue } = change;
       
+      // Find the actual array index by searching for row_index value
+      // row_index is always in column 0
+      const actualRowIndex = updatedRows.findIndex(row => row[0] === rowIndex);
+      
       // Validate indices
-      if (rowIndex < 0 || rowIndex >= updatedRows.length || 
-          columnIndex < 0 || columnIndex >= header.length) {
-        console.warn(`Invalid indices: row ${rowIndex}, col ${columnIndex}`);
+      if (actualRowIndex === -1) {
+        console.warn(`Row with row_index ${rowIndex} not found`);
+        continue;
+      }
+      
+      if (columnIndex < 0 || columnIndex >= header.length) {
+        console.warn(`Invalid column index: ${columnIndex}`);
         continue;
       }
       
       // Verify current value matches expected old value (conflict detection)
-      const currentValue = updatedRows[rowIndex][columnIndex] || '';
+      const currentValue = updatedRows[actualRowIndex][columnIndex] || '';
       if (currentValue !== oldValue) {
-        console.warn(`Conflict detected at row ${rowIndex}, col ${columnIndex}: expected "${oldValue}", found "${currentValue}"`);
+        console.warn(`Conflict detected at row_index ${rowIndex}, col ${columnIndex}: expected "${oldValue}", found "${currentValue}"`);
         // For now, we'll apply the change anyway but log the conflict
         // In a more sophisticated system, we might reject the change or require resolution
       }
       
       // Apply the change
-      updatedRows[rowIndex][columnIndex] = newValue;
+      updatedRows[actualRowIndex][columnIndex] = newValue;
       appliedChanges.push(change);
       
-      console.log(`Applied change: row ${rowIndex}, col ${columnIndex}, ${oldValue} → ${newValue}`);
+      console.log(`Applied change: row_index ${rowIndex}, col ${columnIndex}, ${oldValue} → ${newValue}`);
     }
 
     // Write updated file

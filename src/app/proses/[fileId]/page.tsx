@@ -30,7 +30,7 @@ export default function ProsesDetailPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalRows, setTotalRows] = useState(0);
   const [hasChanges, setHasChanges] = useState(false);
-  const [pendingChanges, setPendingChanges] = useState<{ [key: string]: { rowIndex: number; columnIndex: number; oldValue: string; newValue: string } }>({});
+  const [pendingChanges, setPendingChanges] = useState<{ [key: string]: { rowIndex: string; columnIndex: number; oldValue: string; newValue: string } }>({});
   const limit = 10;
 
   // Socket.IO integration
@@ -196,13 +196,15 @@ export default function ProsesDetailPage() {
       console.log('Received file update:', event);
       
         // Apply specific cell changes if provided, otherwise fallback to full refresh
-      if (event.data && typeof event.data.rowIndex === 'number' && typeof event.data.columnIndex === 'number' && typeof event.data.newValue === 'string') {
-        const { rowIndex: globalRowIndex, columnIndex, newValue } = event.data as { rowIndex: number; columnIndex: number; newValue: string };
-        const pageRowIndex = globalRowIndex - (currentPage - 1) * limit;
+      if (event.data && typeof event.data.rowIndex === 'string' && typeof event.data.columnIndex === 'number' && typeof event.data.newValue === 'string') {
+        const { rowIndex: rowIndexValue, columnIndex, newValue } = event.data as { rowIndex: string; columnIndex: number; newValue: string };
+        
+        // Find the row in current page by row_index
+        const pageRowIndex = rows.findIndex(row => row[0] === rowIndexValue);
         
         // Update the specific cell if it's on current page
-        if (pageRowIndex >= 0 && pageRowIndex < rows.length && columnIndex >= 0 && columnIndex < header.length) {
-          console.log(`Applying specific cell update: row ${globalRowIndex} (page row ${pageRowIndex}), col ${columnIndex}, value: ${newValue}`);
+        if (pageRowIndex !== -1 && columnIndex >= 0 && columnIndex < header.length) {
+          console.log(`Applying specific cell update: row_index ${rowIndexValue} (page row ${pageRowIndex}), col ${columnIndex}, value: ${newValue}`);
           
           // Update current page rows
           setRows(prevRows => {
@@ -214,8 +216,9 @@ export default function ProsesDetailPage() {
           // Update allRows as well
           setAllRows(prevAllRows => {
             const newAllRows = [...prevAllRows];
-            if (newAllRows[globalRowIndex]) {
-              newAllRows[globalRowIndex][columnIndex] = newValue;
+            const allRowIndex = newAllRows.findIndex(r => r[0] === rowIndexValue);
+            if (allRowIndex !== -1) {
+              newAllRows[allRowIndex][columnIndex] = newValue;
             }
             return newAllRows;
           });
@@ -224,7 +227,7 @@ export default function ProsesDetailPage() {
         // Show specific cell update notification
         const notificationDiv = document.createElement('div');
         const cellName = header[columnIndex]?.replace(/^['"]|['"]$/g, "") || `Col ${columnIndex}`;
-        notificationDiv.innerHTML = `� ${event.username || 'User lain'} mengubah "${cellName}" di baris ${globalRowIndex + 1}`;
+        notificationDiv.innerHTML = `📝 ${event.username || 'User lain'} mengubah "${cellName}" di baris dengan ID ${rowIndexValue}`;
         notificationDiv.style.cssText = `
           position: fixed;
           top: 80px;
@@ -302,7 +305,7 @@ export default function ProsesDetailPage() {
     });
 
     return unsubscribe;
-  }, [fileId, onFileUpdated, currentPage, activeFilters, fetchData, header, rows.length]);
+  }, [fileId, onFileUpdated, currentPage, activeFilters, fetchData, header, rows]);
 
   // Keyboard shortcut handler for Ctrl+S / Cmd+S
   useEffect(() => {
@@ -379,7 +382,8 @@ export default function ProsesDetailPage() {
                 setEditing(false);
                 const oldValue = value;
                 if (oldValue !== editValue) {
-                  const globalRowIndex = (currentPage - 1) * limit + row.index;
+                  // Get row_index from the first column (index 0)
+                  const rowIndexValue = rows[row.index][0]; // row_index is always in column 0
                   
                   // Update rows display
                   setRows(prevRows => {
@@ -391,18 +395,20 @@ export default function ProsesDetailPage() {
                   // Update allRows for complete data
                   setAllRows(prevAllRows => {
                     const newAllRows = [...prevAllRows];
-                    if (newAllRows[globalRowIndex]) {
-                      newAllRows[globalRowIndex][idx] = editValue;
+                    // Find the row with matching row_index
+                    const allRowIndex = newAllRows.findIndex(r => r[0] === rowIndexValue);
+                    if (allRowIndex !== -1) {
+                      newAllRows[allRowIndex][idx] = editValue;
                     }
                     return newAllRows;
                   });
                   
-                  // Track this specific change for incremental updates
-                  const changeKey = `${globalRowIndex}-${idx}`;
+                  // Track this specific change for incremental updates using row_index
+                  const changeKey = `${rowIndexValue}-${idx}`;
                   setPendingChanges(prevChanges => ({
                     ...prevChanges,
                     [changeKey]: {
-                      rowIndex: globalRowIndex,
+                      rowIndex: rowIndexValue, // Use row_index value instead of array index
                       columnIndex: idx,
                       oldValue,
                       newValue: editValue
@@ -410,7 +416,7 @@ export default function ProsesDetailPage() {
                   }));
                   
                   setHasChanges(true);
-                  console.log(`Cell change tracked: row ${globalRowIndex}, col ${idx}, ${oldValue} → ${editValue}`);
+                  console.log(`Cell change tracked: row_index ${rowIndexValue}, col ${idx}, ${oldValue} → ${editValue}`);
                 }
               }}
               onKeyDown={e => {
@@ -453,7 +459,7 @@ export default function ProsesDetailPage() {
         );
       },
     })),
-    [header, hoveredCell, currentPage, limit]
+    [header, hoveredCell, rows]
   );
 
   // Table data: use backend-paginated rows only
@@ -664,29 +670,31 @@ export default function ProsesDetailPage() {
                       // Update allRows untuk auto-save
                       setAllRows(prevAllRows => {
                         const newAllRows = [...prevAllRows];
-                        const globalRowIndex = (currentPage - 1) * limit + panelCell.row;
-                        if (newAllRows[globalRowIndex]) {
-                          if (!newAllRows[globalRowIndex][colIdx]) {
-                            newAllRows[globalRowIndex] = [...newAllRows[globalRowIndex], ""];
+                        const rowIndexValue = rows[panelCell.row][0]; // row_index is in column 0
+                        // Find the row with matching row_index
+                        const allRowIndex = newAllRows.findIndex(r => r[0] === rowIndexValue);
+                        if (allRowIndex !== -1) {
+                          if (!newAllRows[allRowIndex][colIdx]) {
+                            newAllRows[allRowIndex] = [...newAllRows[allRowIndex], ""];
                           }
-                          newAllRows[globalRowIndex][colIdx] = kodeValue;
+                          newAllRows[allRowIndex][colIdx] = kodeValue;
                         }
                         return newAllRows;
                       });
 
-                      // Track this change for incremental updates
-                      const globalRowIndex = (currentPage - 1) * limit + panelCell.row;
-                      const changeKey = `${globalRowIndex}-${colIdx}`;
+                      // Track this change for incremental updates using row_index
+                      const rowIndexValue = rows[panelCell.row][0]; // row_index is in column 0
+                      const changeKey = `${rowIndexValue}-${colIdx}`;
                       setPendingChanges(prevChanges => ({
                         ...prevChanges,
                         [changeKey]: {
-                          rowIndex: globalRowIndex,
+                          rowIndex: rowIndexValue,
                           columnIndex: colIdx,
                           oldValue,
                           newValue: kodeValue
                         }
                       }));
-                      console.log(`CellDrawer change tracked (extra): row ${globalRowIndex}, col ${colIdx}, ${oldValue} → ${kodeValue}`);
+                      console.log(`CellDrawer change tracked (extra): row_index ${rowIndexValue}, col ${colIdx}, ${oldValue} → ${kodeValue}`);
                     });
 
                     if (changed) {
@@ -700,26 +708,28 @@ export default function ProsesDetailPage() {
                     // Update allRows untuk auto-save
                     setAllRows(prevAllRows => {
                       const newAllRows = [...prevAllRows];
-                      const globalRowIndex = (currentPage - 1) * limit + panelCell.row;
-                      if (newAllRows[globalRowIndex]) {
-                        newAllRows[globalRowIndex][panelCell.col] = newValue;
+                      const rowIndexValue = rows[panelCell.row][0]; // row_index is in column 0
+                      // Find the row with matching row_index
+                      const allRowIndex = newAllRows.findIndex(r => r[0] === rowIndexValue);
+                      if (allRowIndex !== -1) {
+                        newAllRows[allRowIndex][panelCell.col] = newValue;
                       }
                       return newAllRows;
                     });
 
-                    // Track this change for incremental updates
-                    const globalRowIndex = (currentPage - 1) * limit + panelCell.row;
-                    const changeKey = `${globalRowIndex}-${panelCell.col}`;
+                    // Track this change for incremental updates using row_index
+                    const rowIndexValue = rows[panelCell.row][0]; // row_index is in column 0
+                    const changeKey = `${rowIndexValue}-${panelCell.col}`;
                     setPendingChanges(prevChanges => ({
                       ...prevChanges,
                       [changeKey]: {
-                        rowIndex: globalRowIndex,
+                        rowIndex: rowIndexValue,
                         columnIndex: panelCell.col,
                         oldValue,
                         newValue
                       }
                     }));
-                    console.log(`CellDrawer change tracked (main): row ${globalRowIndex}, col ${panelCell.col}, ${oldValue} → ${newValue}`);
+                    console.log(`CellDrawer change tracked (main): row_index ${rowIndexValue}, col ${panelCell.col}, ${oldValue} → ${newValue}`);
                   }
 
                   setRows(newRows);

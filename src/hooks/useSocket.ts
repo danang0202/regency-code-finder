@@ -144,7 +144,7 @@ export function useSocket(options: UseSocketOptions = {}) {
   }, [socket, isConnected]);
 
   // Emit file update
-  const emitFileUpdate = useCallback((fileId: string, action: 'update' | 'delete' | 'add', data?: Record<string, unknown>, rowIndex?: number) => {
+  const emitFileUpdate = useCallback((fileId: string, action: 'update' | 'delete' | 'add', data?: Record<string, unknown>, rowIndex?: string) => {
     if (socket && isConnected) {
       console.log('useSocket: Emitting file-updated event:', { fileId, action, data, rowIndex });
       socket.emit('file-updated', {
