@@ -17,6 +17,7 @@ import {
   extractPaginationParams 
 } from "@/helper/query-params.helper";
 import { writeFile_custom } from "@/helper/file-writing.helper";
+import { deleteFile } from "@/helper/file-deletion.helper";
 
 export async function GET(req: NextRequest, context: { params: Promise<{ uuid: string }> }) {
   const { uuid } = await context.params;
@@ -79,5 +80,19 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ uuid:
     return createSuccessResponse({ success: true });
   } catch {
     return createErrorResponse("Update failed", 500);
+  }
+}
+
+export async function DELETE(req: NextRequest, context: { params: Promise<{ uuid: string }> }) {
+  const { uuid } = await context.params;
+
+  try {
+    // Use the helper function to delete the file
+    await deleteFile(uuid);
+    
+    return createSuccessResponse({ success: true, message: "File deleted successfully" });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to delete file";
+    return createErrorResponse(errorMessage, 500);
   }
 }

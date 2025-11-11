@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
       fileType: fileType || "csv",
       uploadedAt: new Date().toISOString(),
       originalName: file.name,
+      realName: file.name, // Store the actual uploaded filename
       uuid,
     };
 

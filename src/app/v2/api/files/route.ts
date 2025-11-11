@@ -8,6 +8,7 @@ interface FileMetadata {
   fileType?: string;
   uploadedAt?: string;
   originalName?: string;
+  realName?: string;
   uuid: string;
 }
 

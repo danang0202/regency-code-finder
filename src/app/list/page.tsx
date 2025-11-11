@@ -15,8 +15,9 @@ import {
   Center,
   Stack,
   ActionIcon,
+  Modal,
 } from "@mantine/core";
-import { IconFile, IconFileTypeXls, IconFileTypeCsv, IconPlayerPlay, IconRefresh } from "@tabler/icons-react";
+import { IconFile, IconFileTypeXls, IconFileTypeCsv, IconPlayerPlay, IconRefresh, IconTrash } from "@tabler/icons-react";
 
 interface FileMetadata {
   fileName: string;
@@ -24,12 +25,16 @@ interface FileMetadata {
   fileType?: string;
   uploadedAt?: string;
   originalName?: string;
+  realName?: string;
   uuid: string;
 }
 
 export default function ListPage() {
   const [files, setFiles] = useState<FileMetadata[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<FileMetadata | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const router = useRouter();
 
   const fetchFiles = async () => {
@@ -53,6 +58,35 @@ export default function ListPage() {
 
   const handleProcess = (uuid: string) => {
     router.push(`/proses/${uuid}`);
+  };
+
+  const handleDeleteClick = (file: FileMetadata) => {
+    setFileToDelete(file);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!fileToDelete) return;
+    
+    setDeleting(true);
+    try {
+      const response = await fetch(`/v2/api/file/${fileToDelete.uuid}`, {
+        method: "DELETE",
+      });
+      
+      if (response.ok) {
+        // Remove from local state
+        setFiles(files.filter(f => f.uuid !== fileToDelete.uuid));
+        setDeleteModalOpen(false);
+        setFileToDelete(null);
+      } else {
+        console.error("Failed to delete file");
+      }
+    } catch (error) {
+      console.error("Failed to delete file:", error);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const formatDate = (dateString?: string) => {
@@ -159,7 +193,7 @@ export default function ListPage() {
                         {getFileIcon(file.fileType)}
                         <div>
                           <Text size="sm" weight={500}>
-                            {file.originalName || file.fileName}
+                            {file.realName || file.originalName || file.fileName}
                           </Text>
                           <Text size="xs" color="dimmed">
                             UUID: {file.uuid}
@@ -182,6 +216,15 @@ export default function ListPage() {
                         >
                           Process
                         </Button>
+                        <ActionIcon
+                          size="lg"
+                          variant="light"
+                          color="red"
+                          onClick={() => handleDeleteClick(file)}
+                          title="Delete file"
+                        >
+                          <IconTrash size={18} />
+                        </ActionIcon>
                       </Group>
                     </td>
                   </tr>
@@ -190,6 +233,49 @@ export default function ListPage() {
             </Table>
           )}
         </Paper>
+
+        {/* Delete confirmation modal */}
+        <Modal
+          opened={deleteModalOpen}
+          onClose={() => !deleting && setDeleteModalOpen(false)}
+          title="Confirm Deletion"
+          centered
+        >
+          <Stack spacing="md">
+            <Text size="sm">
+              Are you sure you want to delete this file?
+            </Text>
+            {fileToDelete && (
+              <Paper p="sm" withBorder>
+                <Text size="sm" weight={500}>
+                  {fileToDelete.realName || fileToDelete.originalName || fileToDelete.fileName}
+                </Text>
+                <Text size="xs" color="dimmed">
+                  UUID: {fileToDelete.uuid}
+                </Text>
+              </Paper>
+            )}
+            <Text size="xs" color="red">
+              This action cannot be undone. The file and its metadata will be permanently deleted.
+            </Text>
+            <Group position="right" spacing="xs">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteModalOpen(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                color="red"
+                onClick={handleDeleteConfirm}
+                loading={deleting}
+              >
+                Delete
+              </Button>
+            </Group>
+          </Stack>
+        </Modal>
       </Container>
     </div>
   );

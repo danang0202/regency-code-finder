@@ -21,6 +21,7 @@ export default function ProsesDetailPage() {
   const [loading, setLoading] = useState(true);
   const [silentLoading, setSilentLoading] = useState(false);
   const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null);
+  const [fileMetadata, setFileMetadata] = useState<{ realName?: string; fileName?: string } | null>(null);
   
   // Track specific cell changes for incremental updates (using existing pendingChanges)
   const [panelOpen, setPanelOpen] = useState(false);
@@ -328,6 +329,23 @@ export default function ProsesDetailPage() {
     };
   }, [hasChanges, pendingChanges, saveChanges]);
 
+  // Fetch file metadata
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      if (!fileId) return;
+      try {
+        const res = await fetch(`/v2/api/file/${fileId}?meta=true`);
+        if (res.ok) {
+          const meta = await res.json();
+          setFileMetadata(meta);
+        }
+      } catch (error) {
+        console.error('Failed to fetch metadata:', error);
+      }
+    };
+    fetchMetadata();
+  }, [fileId]);
+
   useEffect(() => {
     if (fileId) {
       fetchData(1);
@@ -568,7 +586,9 @@ export default function ProsesDetailPage() {
             {/* Real-time components */}
             <Group position="apart" mb="md">
               <div>
-                <Text size="lg" weight={500}>File: {fileId}</Text>
+                <Text size="lg" weight={500}>
+                  File: {fileMetadata?.realName || fileMetadata?.fileName || fileId}
+                </Text>
               </div>
               <ActiveUsers fileId={fileId as string} />
             </Group>
