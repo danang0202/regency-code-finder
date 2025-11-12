@@ -30,7 +30,8 @@ export default function ProsesDetailPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalRows, setTotalRows] = useState(0);
   const [hasChanges, setHasChanges] = useState(false);
-  const [pendingChanges, setPendingChanges] = useState<{ [key: string]: { rowIndex: string; columnIndex: number; oldValue: string; newValue: string } }>({});
+  const [pendingChanges, setPendingChanges] = useState<{ [key: string]: { rowIndex: string; columnName: string; oldValue: string; newValue: string } }>({});
+  const [importantColumnsOnly, setImportantColumnsOnly] = useState(false);
   const limit = 10;
 
   // Socket.IO integration
@@ -118,7 +119,7 @@ export default function ProsesDetailPage() {
           changes.forEach(change => {
             emitFileUpdate(fileId as string, 'update', {
               rowIndex: change.rowIndex,
-              columnIndex: change.columnIndex,
+              columnName: change.columnName,
               oldValue: change.oldValue,
               newValue: change.newValue,
               timestamp: new Date().toISOString()
@@ -130,6 +131,9 @@ export default function ProsesDetailPage() {
       console.error('Failed to save data:', error);
     }
   }, [fileId, pendingChanges, hasChanges, isConnected, emitFileUpdate]);
+
+  // Store column mapping for important columns mode
+  const [columnMapping, setColumnMapping] = useState<number[]>([]);
 
   // Fetch data with pagination
   const fetchData = useCallback(async (page = 1, filters = activeFilters, silent = false) => {
@@ -145,7 +149,10 @@ export default function ProsesDetailPage() {
         .filter(([, v]) => v)
         .map(([colIdx, value]) => `filter[${colIdx}]=${encodeURIComponent(value)}`)
         .join('&');
-      const url = `/v2/api/file/${fileId}?page=${page}&limit=${limit}${filterQuery ? `&${filterQuery}` : ''}`;
+      
+      // Build URL with important columns parameter
+      const importantColumnsParam = importantColumnsOnly ? '&important_columns_only=true' : '';
+      const url = `/v2/api/file/${fileId}?page=${page}&limit=${limit}${filterQuery ? `&${filterQuery}` : ''}${importantColumnsParam}`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -154,10 +161,13 @@ export default function ProsesDetailPage() {
         setTotalRows(data.totalRows || 0);
         setTotalPages(data.totalPages || 0);
         setCurrentPage(page);
+        // Set column mapping for important columns mode
+        setColumnMapping(data.columnMapping || []);
 
         // Load all data untuk auto-save hanya sekali saat load awal (tanpa filter)
         if (page === 1 && allRows.length === 0 && data.totalRows > 0 && Object.keys(filters).length === 0) {
-          const allRes = await fetch(`/v2/api/file/${fileId}?page=1&limit=${data.totalRows}`);
+          const allDataUrl = `/v2/api/file/${fileId}?page=1&limit=${data.totalRows}${importantColumnsParam}`;
+          const allRes = await fetch(allDataUrl);
           if (allRes.ok) {
             const allData = await allRes.json();
             setAllRows(allData.rows || []);
@@ -173,7 +183,7 @@ export default function ProsesDetailPage() {
     } else {
       setSilentLoading(false);
     }
-  }, [fileId, activeFilters, allRows.length]);
+  }, [fileId, activeFilters, allRows.length, importantColumnsOnly]);
 
   // Join socket room when file opens
   useEffect(() => {
@@ -196,15 +206,20 @@ export default function ProsesDetailPage() {
       console.log('Received file update:', event);
       
         // Apply specific cell changes if provided, otherwise fallback to full refresh
-      if (event.data && typeof event.data.rowIndex === 'string' && typeof event.data.columnIndex === 'number' && typeof event.data.newValue === 'string') {
-        const { rowIndex: rowIndexValue, columnIndex, newValue } = event.data as { rowIndex: string; columnIndex: number; newValue: string };
+      if (event.data && typeof event.data.rowIndex === 'string' && typeof event.data.columnName === 'string' && typeof event.data.newValue === 'string') {
+        const { rowIndex: rowIndexValue, columnName, newValue } = event.data as { rowIndex: string; columnName: string; newValue: string };
         
         // Find the row in current page by row_index
         const pageRowIndex = rows.findIndex(row => row[0] === rowIndexValue);
         
-        // Update the specific cell if it's on current page
-        if (pageRowIndex !== -1 && columnIndex >= 0 && columnIndex < header.length) {
-          console.log(`Applying specific cell update: row_index ${rowIndexValue} (page row ${pageRowIndex}), col ${columnIndex}, value: ${newValue}`);
+        // Find column index by column name
+        const columnIndex = header.findIndex(h => 
+          h.toLowerCase().replace(/['"]/g, '').trim() === columnName.toLowerCase().replace(/['"]/g, '').trim()
+        );
+        
+        // Update the specific cell if it's on current page and column exists
+        if (pageRowIndex !== -1 && columnIndex !== -1) {
+          console.log(`Applying specific cell update: row_index ${rowIndexValue} (page row ${pageRowIndex}), column ${columnName}, value: ${newValue}`);
           
           // Update current page rows
           setRows(prevRows => {
@@ -213,11 +228,13 @@ export default function ProsesDetailPage() {
             return newRows;
           });
           
-          // Update allRows as well
+          // Update allRows as well (find column by name in allRows header)
           setAllRows(prevAllRows => {
             const newAllRows = [...prevAllRows];
             const allRowIndex = newAllRows.findIndex(r => r[0] === rowIndexValue);
             if (allRowIndex !== -1) {
+              // For allRows, we need to find the column in the original full header
+              // For now, assume same column structure
               newAllRows[allRowIndex][columnIndex] = newValue;
             }
             return newAllRows;
@@ -345,6 +362,14 @@ export default function ProsesDetailPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFilters]);
+
+  // Refetch data when important columns toggle changes
+  useEffect(() => {
+    if (fileId) {
+      fetchData(currentPage, activeFilters);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [importantColumnsOnly]);
   // Handle page change dengan auto-save
   const handlePageChange = async (page: number) => {
     await saveChanges();
@@ -398,18 +423,20 @@ export default function ProsesDetailPage() {
                     // Find the row with matching row_index
                     const allRowIndex = newAllRows.findIndex(r => r[0] === rowIndexValue);
                     if (allRowIndex !== -1) {
-                      newAllRows[allRowIndex][idx] = editValue;
+                      const targetColIndex = columnMapping.length > 0 ? columnMapping[idx] : idx;
+                      newAllRows[allRowIndex][targetColIndex] = editValue;
                     }
                     return newAllRows;
                   });
                   
-                  // Track this specific change for incremental updates using row_index
-                  const changeKey = `${rowIndexValue}-${idx}`;
+                  // Track this specific change for incremental updates using row_index + column name
+                  const columnName = header[idx].replace(/^['"]|['"]$/g, "").trim();
+                  const changeKey = `${rowIndexValue}-${columnName}`;
                   setPendingChanges(prevChanges => ({
                     ...prevChanges,
                     [changeKey]: {
-                      rowIndex: rowIndexValue, // Use row_index value instead of array index
-                      columnIndex: idx,
+                      rowIndex: rowIndexValue, // Use row_index value for row identification
+                      columnName: columnName, // Use column name for column identification - much safer!
                       oldValue,
                       newValue: editValue
                     }
@@ -459,7 +486,7 @@ export default function ProsesDetailPage() {
         );
       },
     })),
-    [header, hoveredCell, rows]
+    [header, hoveredCell, rows, columnMapping]
   );
 
   // Table data: use backend-paginated rows only
@@ -508,6 +535,15 @@ export default function ProsesDetailPage() {
       return (
         <Group position="apart" mb="xs" spacing={5}>
           <Group>
+            <Button 
+              size="sm" 
+              variant={importantColumnsOnly ? "filled" : "outline"}
+              color={importantColumnsOnly ? "blue" : "gray"}
+              onClick={() => setImportantColumnsOnly(!importantColumnsOnly)}
+              title="Tampilkan hanya kolom penting untuk meningkatkan performa"
+            >
+              🎯 Important Columns Only
+            </Button>
             <MRT_ShowHideColumnsButton table={table} />
             <MRT_ToggleFiltersButton table={table} />
             <Button size="sm" variant="outline" onClick={() => setFilterModalOpen(true)}>
@@ -682,19 +718,20 @@ export default function ProsesDetailPage() {
                         return newAllRows;
                       });
 
-                      // Track this change for incremental updates using row_index
+                      // Track this change for incremental updates using row_index + column name
                       const rowIndexValue = rows[panelCell.row][0]; // row_index is in column 0
-                      const changeKey = `${rowIndexValue}-${colIdx}`;
+                      const columnName = headerRow[colIdx].replace(/^['"]|['"]$/g, "").trim();
+                      const changeKey = `${rowIndexValue}-${columnName}`;
                       setPendingChanges(prevChanges => ({
                         ...prevChanges,
                         [changeKey]: {
                           rowIndex: rowIndexValue,
-                          columnIndex: colIdx,
+                          columnName: columnName, // Use column name - much safer!
                           oldValue,
                           newValue: kodeValue
                         }
                       }));
-                      console.log(`CellDrawer change tracked (extra): row_index ${rowIndexValue}, col ${colIdx}, ${oldValue} → ${kodeValue}`);
+                      console.log(`CellDrawer change tracked (extra): row_index ${rowIndexValue}, column ${columnName}, ${oldValue} → ${kodeValue}`);
                     });
 
                     if (changed) {
@@ -712,24 +749,26 @@ export default function ProsesDetailPage() {
                       // Find the row with matching row_index
                       const allRowIndex = newAllRows.findIndex(r => r[0] === rowIndexValue);
                       if (allRowIndex !== -1) {
-                        newAllRows[allRowIndex][panelCell.col] = newValue;
+                        const targetColIndex = columnMapping.length > 0 ? columnMapping[panelCell.col] : panelCell.col;
+                        newAllRows[allRowIndex][targetColIndex] = newValue;
                       }
                       return newAllRows;
                     });
 
-                    // Track this change for incremental updates using row_index
+                    // Track this change for incremental updates using row_index + column name
                     const rowIndexValue = rows[panelCell.row][0]; // row_index is in column 0
-                    const changeKey = `${rowIndexValue}-${panelCell.col}`;
+                    const columnName = header[panelCell.col].replace(/^['"]|['"]$/g, "").trim();
+                    const changeKey = `${rowIndexValue}-${columnName}`;
                     setPendingChanges(prevChanges => ({
                       ...prevChanges,
                       [changeKey]: {
                         rowIndex: rowIndexValue,
-                        columnIndex: panelCell.col,
+                        columnName: columnName, // Use column name - much safer!
                         oldValue,
                         newValue
                       }
                     }));
-                    console.log(`CellDrawer change tracked (main): row_index ${rowIndexValue}, col ${panelCell.col}, ${oldValue} → ${newValue}`);
+                    console.log(`CellDrawer change tracked (main): row_index ${rowIndexValue}, column ${columnName}, ${oldValue} → ${newValue}`);
                   }
 
                   setRows(newRows);

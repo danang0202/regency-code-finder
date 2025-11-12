@@ -9,7 +9,7 @@ export interface FileUpdateEvent {
   userId: string;
   username: string;
   action: 'update' | 'delete' | 'add';
-  rowIndex?: number;
+  rowIndex?: string;
   data?: Record<string, unknown>;
   timestamp: string;
 }

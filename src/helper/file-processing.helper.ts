@@ -131,3 +131,46 @@ export function applyPagination(
 
   return { pagedRows, totalRows, totalPages };
 }
+
+/**
+ * Apply important columns filter to improve performance
+ */
+export function applyImportantColumnsFilter(
+  header: string[],
+  dataRows: string[][]
+): {
+  filteredHeader: string[];
+  filteredRows: string[][];
+} {
+  // Define important columns (case-insensitive matching)
+  const IMPORTANT_COLUMNS = [
+    'row_index', // Always include row_index for updates
+    'nama_etl',
+    'alamat_etl',
+    'kdprov_etl',
+    'kdkab_etl',
+    'kdkec_etl',
+    'kddesa_etl'
+  ];
+
+  const columnIndices: number[] = [];
+  const filteredHeader: string[] = [];
+
+  // Find indices of important columns that exist in the data
+  IMPORTANT_COLUMNS.forEach(importantCol => {
+    const colIndex = header.findIndex(h => 
+      h.toLowerCase().replace(/['"]/g, '').trim() === importantCol.toLowerCase()
+    );
+    if (colIndex !== -1) {
+      columnIndices.push(colIndex);
+      filteredHeader.push(header[colIndex]);
+    }
+  });
+
+  // Filter rows based on selected column indices
+  const filteredRows = dataRows.map(row => 
+    columnIndices.map(colIdx => row[colIdx] || '')
+  );
+
+  return { filteredHeader, filteredRows };
+}

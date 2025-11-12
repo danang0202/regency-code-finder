@@ -14,6 +14,7 @@ export interface PaginatedResponse<T = unknown> {
   page: number;
   limit: number;
   totalPages: number;
+  columnMapping?: number[];
 }
 
 /**
@@ -45,7 +46,8 @@ export function createPaginatedResponse(
   totalRows: number,
   page: number,
   limit: number,
-  totalPages: number
+  totalPages: number,
+  columnMapping?: number[]
 ): Response {
   const responseData: PaginatedResponse = {
     header,
@@ -55,6 +57,10 @@ export function createPaginatedResponse(
     limit,
     totalPages
   };
+
+  if (columnMapping && columnMapping.length > 0) {
+    responseData.columnMapping = columnMapping;
+  }
 
   return createSuccessResponse(responseData);
 }
