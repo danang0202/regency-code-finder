@@ -1,4 +1,3 @@
-Name,Code,Region
-Jakarta,3100,DKI Jakarta
-Bandung,3200,West Java
-Surabaya,3500,East Java
+name,age,city
+John,30,Jakarta
+Jane,25,Bandung

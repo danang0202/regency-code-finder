@@ -1,7 +1,7 @@
 
 # Regency Code Finder
 
-A Next.js application for managing and searching region codes (provinsi, kabupaten, kecamatan, kelurahan) with file upload, filtering, pagination, and download features. Built with Mantine v6, MantineReactTable, XLSX, Tabler Icons, and TypeScript.
+A Next.js application for managing and searching region codes (provinsi, kabupaten, kecamatan, kelurahan) with file upload, filtering, pagination, download, and delete features. Built with Mantine v6, MantineReactTable, XLSX, Tabler Icons, and TypeScript.
 
 ## Installation
 
@@ -21,6 +21,16 @@ A Next.js application for managing and searching region codes (provinsi, kabupat
 	npm run dev
 	```
 	The app will be available at `http://localhost:3000`.
+
+## Features
+
+- **File Upload** — Upload Excel (.xlsx, .xls) or CSV files for processing
+- **File List** — View all uploaded files with metadata
+- **File Deletion** — Remove files from storage with confirmation modal
+- **Data Processing** — Process and filter region code data
+- **Search & Filter** — Filter data by various columns
+- **Pagination** — Navigate through large datasets efficiently
+- **Download** — Export processed data
 
 ## Project Structure
 
