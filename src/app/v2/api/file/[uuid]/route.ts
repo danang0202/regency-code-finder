@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import path from "path";
-import { readFile } from "fs/promises";
+import { readFile, unlink } from "fs/promises";
 import { 
   parseFile, 
   applyFilters, 
@@ -111,5 +111,36 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ uuid:
     return createSuccessResponse({ success: true });
   } catch {
     return createErrorResponse("Update failed", 500);
+  }
+}
+
+/**
+ * DELETE /v2/api/file/[uuid]
+ * Deletes a file and its metadata from storage
+ */
+export async function DELETE(_req: NextRequest, context: { params: Promise<{ uuid: string }> }) {
+  const { uuid } = await context.params;
+  const storageDir = path.join(process.cwd(), "storage");
+  
+  try {
+    // Read metadata to get the actual file name
+    const metaPath = path.join(storageDir, `${uuid}.json`);
+    const metaRaw = await readFile(metaPath, "utf-8");
+    const meta: FileMetadata = JSON.parse(metaRaw);
+    const filePath = path.join(storageDir, meta.fileName);
+    
+    // Delete the data file
+    await unlink(filePath);
+    
+    // Delete the metadata file
+    await unlink(metaPath);
+    
+    return createSuccessResponse({ 
+      success: true, 
+      message: "File deleted successfully" 
+    });
+  } catch (error) {
+    console.error("Error deleting file:", error);
+    return createErrorResponse("Failed to delete file", 500);
   }
 }
