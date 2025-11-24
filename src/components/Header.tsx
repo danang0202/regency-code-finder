@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { Group, Header as MantineHeader, Container, Avatar, Menu, Text, Button } from "@mantine/core";
 import { IconLogout, IconLogin } from "@tabler/icons-react";
@@ -32,9 +33,17 @@ export default function Header() {
 
   return (
     <MantineHeader height={64} px="md">
-      <Container size="lg" style={{ height: "100%" }}>
+      <Container size="xl" style={{ height: "100%" }}>
         <Group position="apart" align="center" style={{ height: "100%" }}>
           <Group spacing="sm" align="center">
+            <Image
+              src="/logo-rcf.svg"
+              alt="Region Code Finder Logo"
+              width={36}
+              height={36}
+              style={{ display: "inline-block" }}
+              priority
+            />
             <Text weight={700} size="lg">Region Code Finder</Text>
           </Group>
 
@@ -51,6 +60,12 @@ export default function Header() {
             >
               List
             </Text>
+              <Text
+                style={{ cursor: "pointer", fontWeight: isActive("/saarch-code") ? 600 : 400 }}
+                onClick={() => router.push("/saarch-code")}
+              >
+                Search Code
+              </Text>
           </Group>
 
           {isLoading ? (
