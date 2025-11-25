@@ -55,17 +55,26 @@ export default function SaarchCodePage() {
     setTimeout(() => setCopied(null), 600);
   };
 
+  /**
+   * Format kabupaten name with KAB. or KOTA prefix based on regional code
+   * Business rule: If kode_kab starts with "7", it's classified as "Kota" (city),
+   * otherwise it's classified as "Kabupaten" (regency)
+   * Example outputs: "KAB. WONOGIRI", "KOTA SURAKARTA"
+   */
   const formatKabupatenName = (name: string, kodeKab: string) => {
-    // If kode_kab starts with "7", it's a "Kota", otherwise "Kabupaten"
     const isKota = kodeKab.startsWith("7");
     return isKota ? `KOTA ${name}` : `KAB. ${name}`;
   };
 
   const showCopyName = (name: string, key: string, isKabupaten = false, kodeKab = "") => {
     const formatted = isKabupaten ? formatKabupatenName(name, kodeKab) : name;
-    navigator.clipboard.writeText(formatted);
-    setCopiedName(key);
-    setTimeout(() => setCopiedName(null), 600);
+    try {
+      navigator.clipboard.writeText(formatted);
+      setCopiedName(key);
+      setTimeout(() => setCopiedName(null), 600);
+    } catch {
+      // Silently fail if clipboard is not available
+    }
   };
 
   // @ts-ignore
