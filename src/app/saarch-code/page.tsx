@@ -57,6 +57,15 @@ export default function SaarchCodePage() {
     };
   }, []);
 
+  // Style for keyboard shortcut hint
+  const kbdStyle: React.CSSProperties = {
+    padding: "2px 6px",
+    borderRadius: 4,
+    backgroundColor: "#f1f3f5",
+    border: "1px solid #dee2e6",
+    fontFamily: "monospace"
+  };
+
   const formatKodeExcel = (kode: string) => {
     // Only format if kode is all digits and length <= 3
     if (/^\d{1,3}$/.test(kode)) {
@@ -153,7 +162,7 @@ export default function SaarchCodePage() {
             size="md"
           />
           <Text size="xs" color="dimmed" mb="lg">
-            Tekan <kbd style={{ padding: "2px 6px", borderRadius: 4, backgroundColor: "#f1f3f5", border: "1px solid #dee2e6", fontFamily: "monospace" }}>Ctrl</kbd> + <kbd style={{ padding: "2px 6px", borderRadius: 4, backgroundColor: "#f1f3f5", border: "1px solid #dee2e6", fontFamily: "monospace" }}>F</kbd> atau <kbd style={{ padding: "2px 6px", borderRadius: 4, backgroundColor: "#f1f3f5", border: "1px solid #dee2e6", fontFamily: "monospace" }}>⌘</kbd> + <kbd style={{ padding: "2px 6px", borderRadius: 4, backgroundColor: "#f1f3f5", border: "1px solid #dee2e6", fontFamily: "monospace" }}>F</kbd> untuk fokus ke pencarian
+            Tekan <kbd style={kbdStyle}>Ctrl</kbd> + <kbd style={kbdStyle}>F</kbd> atau <kbd style={kbdStyle}>⌘</kbd> + <kbd style={kbdStyle}>F</kbd> untuk fokus ke pencarian
           </Text>
 
           <Stack>
