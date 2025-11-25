@@ -139,7 +139,7 @@ export default function ListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black">
+    <div style={{ minHeight: "100vh" }}>
       <Container size="xl" py="xl">
         <Paper shadow="sm" radius="md" p="xl" withBorder>
           <Group position="apart" mb="xl">

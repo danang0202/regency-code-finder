@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { Group, Header as MantineHeader, Container, Avatar, Menu, Text, Button } from "@mantine/core";
 import { IconLogout, IconLogin } from "@tabler/icons-react";
 import { useAuth } from "./auth/AuthProvider";
+import ColorSchemeToggle from "./ColorSchemeToggle";
 
 export default function Header() {
   const { user, isAuthenticated, logout, isLoading } = useAuth();
@@ -68,34 +69,37 @@ export default function Header() {
               </Text>
           </Group>
 
-          {isLoading ? (
-            <div>Loading...</div>
-          ) : isAuthenticated && user ? (
-            <Menu>
-              <Menu.Target>
-                <Avatar color="blue" radius="xl" style={{ cursor: 'pointer' }}>
-                  {user.username.charAt(0).toUpperCase()}
-                </Avatar>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Label>{user.username}</Menu.Label>
-                <Menu.Item 
-                  icon={<IconLogout size={14} />}
-                  onClick={handleLogout}
-                >
-                  Logout
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          ) : (
-            <Button 
-              leftIcon={<IconLogin size={14} />}
-              onClick={handleLogin}
-              variant="light"
-            >
-              Login
-            </Button>
-          )}
+          <Group spacing={8}>
+            <ColorSchemeToggle />
+            {isLoading ? (
+              <div>Loading...</div>
+            ) : isAuthenticated && user ? (
+              <Menu>
+                <Menu.Target>
+                  <Avatar color="blue" radius="xl" style={{ cursor: 'pointer' }}>
+                    {user.username.charAt(0).toUpperCase()}
+                  </Avatar>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Label>{user.username}</Menu.Label>
+                  <Menu.Item 
+                    icon={<IconLogout size={14} />}
+                    onClick={handleLogout}
+                  >
+                    Logout
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            ) : (
+              <Button 
+                leftIcon={<IconLogin size={14} />}
+                onClick={handleLogin}
+                variant="light"
+              >
+                Login
+              </Button>
+            )}
+          </Group>
         </Group>
       </Container>
     </MantineHeader>
