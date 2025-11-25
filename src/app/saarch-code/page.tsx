@@ -69,7 +69,8 @@ export default function SaarchCodePage() {
 
   const formatKodeExcel = (kode: string, digitLen: number) => {
     // Format code with the specified digit length for Excel (with leading quote)
-    if (/^\d+$/.test(kode)) {
+    // Only format if kode is all digits (1-3 digits covers all Indonesian regional codes)
+    if (/^\d{1,3}$/.test(kode)) {
       return "'" + kode.padStart(digitLen, "0");
     }
     return kode;
