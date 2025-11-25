@@ -83,12 +83,13 @@ export default function SaarchCodePage() {
 
   /**
    * Format kabupaten name with KAB. or KOTA prefix based on regional code
-   * Business rule: If kode_kab starts with "7", it's classified as "Kota" (city),
+   * Business rule: If kode_kab (as a number) is >= 71, it's classified as "Kota" (city),
    * otherwise it's classified as "Kabupaten" (regency)
-   * Example outputs: "KAB. WONOGIRI", "KOTA SURAKARTA"
+   * Example outputs: "KAB. MALANG" (code 07), "KOTA MALANG" (code 73)
    */
   const formatKabupatenName = (name: string, kodeKab: string) => {
-    const isKota = kodeKab.startsWith("7");
+    const kodeNum = parseInt(kodeKab, 10);
+    const isKota = !isNaN(kodeNum) && kodeNum >= 71;
     return isKota ? `KOTA ${name}` : `KAB. ${name}`;
   };
 
