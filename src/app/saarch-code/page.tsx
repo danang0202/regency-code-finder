@@ -38,6 +38,7 @@ export default function SaarchCodePage() {
   const [expandedKabupaten, setExpandedKabupaten] = useState<string | null>(null);
   const [expandedKecamatan, setExpandedKecamatan] = useState<string[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
+  const [copiedName, setCopiedName] = useState<string | null>(null);
 
   const formatKodeExcel = (kode: string) => {
     // Only format if kode is all digits and length <= 3
@@ -52,6 +53,19 @@ export default function SaarchCodePage() {
     navigator.clipboard.writeText(formatted);
     setCopied(kode); 
     setTimeout(() => setCopied(null), 600);
+  };
+
+  const formatKabupatenName = (name: string, kodeKab: string) => {
+    // If kode_kab starts with "7", it's a "Kota", otherwise "Kabupaten"
+    const isKota = kodeKab.startsWith("7");
+    return isKota ? `KOTA ${name}` : `KAB. ${name}`;
+  };
+
+  const showCopyName = (name: string, key: string, isKabupaten = false, kodeKab = "") => {
+    const formatted = isKabupaten ? formatKabupatenName(name, kodeKab) : name;
+    navigator.clipboard.writeText(formatted);
+    setCopiedName(key);
+    setTimeout(() => setCopiedName(null), 600);
   };
 
   // @ts-ignore
@@ -138,7 +152,17 @@ export default function SaarchCodePage() {
                   {filteredProvinsi.slice(0, 50).map((item) => (
                     <React.Fragment key={item.kode_prov}>
                       <tr>
-                        <td>{item.nama_prov}</td>
+                        <td
+                          style={{
+                            cursor: "pointer",
+                            transition: "background 0.25s, transform 0.25s",
+                            background: copiedName === `prov-${item.kode_prov}` ? "#38d9a922" : undefined,
+                          }}
+                          onClick={() => showCopyName(item.nama_prov, `prov-${item.kode_prov}`)}
+                          title="Klik untuk salin nama provinsi"
+                        >
+                          {item.nama_prov}
+                        </td>
                         <td>
                           <Badge
                             color="green"
@@ -181,7 +205,17 @@ export default function SaarchCodePage() {
                               <tbody>
                                 {kabupaten.filter(kab => kab.kode_prov === item.kode_prov).map(kab => (
                                   <tr key={kab.kode_kab}>
-                                    <td>{kab.kab_nama}</td>
+                                    <td
+                                      style={{
+                                        cursor: "pointer",
+                                        transition: "background 0.25s",
+                                        background: copiedName === `kab-nested-${kab.kode_kab}` ? "#228be622" : undefined,
+                                      }}
+                                      onClick={() => showCopyName(kab.kab_nama, `kab-nested-${kab.kode_kab}`, true, kab.kode_kab)}
+                                      title="Klik untuk salin nama kabupaten/kota"
+                                    >
+                                      {kab.kab_nama}
+                                    </td>
                                     <td>
                                       <Badge
                                         color="blue"
@@ -240,7 +274,17 @@ export default function SaarchCodePage() {
                   {filteredKabupaten.slice(0, 50).map((item) => (
                     <React.Fragment key={item.kode_kab + item.kode_prov}>
                       <tr>
-                        <td>{item.kab_nama}</td>
+                        <td
+                          style={{
+                            cursor: "pointer",
+                            transition: "background 0.25s",
+                            background: copiedName === `kab-${item.kode_kab}` ? "#228be622" : undefined,
+                          }}
+                          onClick={() => showCopyName(item.kab_nama, `kab-${item.kode_kab}`, true, item.kode_kab)}
+                          title="Klik untuk salin nama kabupaten/kota"
+                        >
+                          {item.kab_nama}
+                        </td>
                         <td>
                           <Badge
                             color="blue"
@@ -258,7 +302,17 @@ export default function SaarchCodePage() {
                             {item.kode_kab}
                           </Badge>
                         </td>
-                        <td>{item.nama_prov}</td>
+                        <td
+                          style={{
+                            cursor: "pointer",
+                            transition: "background 0.25s",
+                            background: copiedName === `kab-prov-${item.kode_kab}-${item.kode_prov}` ? "#38d9a922" : undefined,
+                          }}
+                          onClick={() => showCopyName(item.nama_prov, `kab-prov-${item.kode_kab}-${item.kode_prov}`)}
+                          title="Klik untuk salin nama provinsi"
+                        >
+                          {item.nama_prov}
+                        </td>
                         <td>
                           <Badge
                             color="green"
@@ -303,7 +357,17 @@ export default function SaarchCodePage() {
                                   .filter(kec => kec.kode_kab === item.kode_kab && kec.nama_prov === item.nama_prov)
                                   .map(kec => (
                                     <tr key={kec.kode_kec}>
-                                      <td>{kec.kec_nama}</td>
+                                      <td
+                                        style={{
+                                          cursor: "pointer",
+                                          transition: "background 0.25s",
+                                          background: copiedName === `kec-nested-${kec.kode_kec}` ? "#fd7e1422" : undefined,
+                                        }}
+                                        onClick={() => showCopyName(kec.kec_nama, `kec-nested-${kec.kode_kec}`)}
+                                        title="Klik untuk salin nama kecamatan"
+                                      >
+                                        {kec.kec_nama}
+                                      </td>
                                       <td>
                                         <Badge
                                           color="orange"
@@ -364,7 +428,17 @@ export default function SaarchCodePage() {
                   {filteredKecamatan.slice(0, 50).map((item) => (
                     <React.Fragment key={item.kode_kec + item.kode_kab + item.kode_prov}>
                       <tr>
-                        <td>{item.kec_nama}</td>
+                        <td
+                          style={{
+                            cursor: "pointer",
+                            transition: "background 0.25s",
+                            background: copiedName === `kec-${item.kode_kec}` ? "#fd7e1422" : undefined,
+                          }}
+                          onClick={() => showCopyName(item.kec_nama, `kec-${item.kode_kec}`)}
+                          title="Klik untuk salin nama kecamatan"
+                        >
+                          {item.kec_nama}
+                        </td>
                         <td>
                           <Badge
                             color="orange"
@@ -382,7 +456,17 @@ export default function SaarchCodePage() {
                             {item.kode_kec}
                           </Badge>
                         </td>
-                        <td>{item.kab_nama}</td>
+                        <td
+                          style={{
+                            cursor: "pointer",
+                            transition: "background 0.25s",
+                            background: copiedName === `kec-kab-${item.kode_kec}-${item.kode_kab}` ? "#228be622" : undefined,
+                          }}
+                          onClick={() => showCopyName(item.kab_nama, `kec-kab-${item.kode_kec}-${item.kode_kab}`, true, item.kode_kab)}
+                          title="Klik untuk salin nama kabupaten/kota"
+                        >
+                          {item.kab_nama}
+                        </td>
                         <td>
                           <Badge
                             color="blue"
@@ -400,7 +484,17 @@ export default function SaarchCodePage() {
                             {item.kode_kab}
                           </Badge>
                         </td>
-                        <td>{item.nama_prov}</td>
+                        <td
+                          style={{
+                            cursor: "pointer",
+                            transition: "background 0.25s",
+                            background: copiedName === `kec-prov-${item.kode_kec}-${item.kode_prov}` ? "#38d9a922" : undefined,
+                          }}
+                          onClick={() => showCopyName(item.nama_prov, `kec-prov-${item.kode_kec}-${item.kode_prov}`)}
+                          title="Klik untuk salin nama provinsi"
+                        >
+                          {item.nama_prov}
+                        </td>
                         <td>
                           <Badge
                             color="green"
@@ -455,7 +549,17 @@ export default function SaarchCodePage() {
                                   )
                                   .map(ds => (
                                     <tr key={ds.kode_desa}>
-                                      <td>{ds.desa_nama}</td>
+                                      <td
+                                        style={{
+                                          cursor: "pointer",
+                                          transition: "background 0.25s",
+                                          background: copiedName === `desa-nested-${ds.kode_desa}` ? "#f0659522" : undefined,
+                                        }}
+                                        onClick={() => showCopyName(ds.desa_nama, `desa-nested-${ds.kode_desa}`)}
+                                        title="Klik untuk salin nama desa"
+                                      >
+                                        {ds.desa_nama}
+                                      </td>
                                       <td>
                                         <Badge
                                           color="pink"
@@ -516,7 +620,17 @@ export default function SaarchCodePage() {
                 <tbody>
                   {filteredDesa.slice(0, 50).map((item) => (
                     <tr key={item.kode_desa + item.kode_kec + item.kode_kab + item.kode_prov}>
-                      <td>{item.desa_nama}</td>
+                      <td
+                        style={{
+                          cursor: "pointer",
+                          transition: "background 0.25s",
+                          background: copiedName === `desa-${item.kode_desa}` ? "#f0659522" : undefined,
+                        }}
+                        onClick={() => showCopyName(item.desa_nama, `desa-${item.kode_desa}`)}
+                        title="Klik untuk salin nama desa"
+                      >
+                        {item.desa_nama}
+                      </td>
                       <td>
                         <Badge
                           color="pink"
@@ -534,7 +648,17 @@ export default function SaarchCodePage() {
                           {item.kode_desa}
                         </Badge>
                       </td>
-                      <td>{item.kec_nama}</td>
+                      <td
+                        style={{
+                          cursor: "pointer",
+                          transition: "background 0.25s",
+                          background: copiedName === `desa-kec-${item.kode_desa}-${item.kode_kec}` ? "#fd7e1422" : undefined,
+                        }}
+                        onClick={() => showCopyName(item.kec_nama, `desa-kec-${item.kode_desa}-${item.kode_kec}`)}
+                        title="Klik untuk salin nama kecamatan"
+                      >
+                        {item.kec_nama}
+                      </td>
                       <td>
                         <Badge
                           color="orange"
@@ -552,7 +676,17 @@ export default function SaarchCodePage() {
                           {item.kode_kec}
                         </Badge>
                       </td>
-                      <td>{item.kab_nama}</td>
+                      <td
+                        style={{
+                          cursor: "pointer",
+                          transition: "background 0.25s",
+                          background: copiedName === `desa-kab-${item.kode_desa}-${item.kode_kab}` ? "#228be622" : undefined,
+                        }}
+                        onClick={() => showCopyName(item.kab_nama, `desa-kab-${item.kode_desa}-${item.kode_kab}`, true, item.kode_kab)}
+                        title="Klik untuk salin nama kabupaten/kota"
+                      >
+                        {item.kab_nama}
+                      </td>
                       <td>
                         <Badge
                           color="blue"
@@ -570,7 +704,17 @@ export default function SaarchCodePage() {
                           {item.kode_kab}
                         </Badge>
                       </td>
-                      <td>{item.nama_prov}</td>
+                      <td
+                        style={{
+                          cursor: "pointer",
+                          transition: "background 0.25s",
+                          background: copiedName === `desa-prov-${item.kode_desa}-${item.kode_prov}` ? "#38d9a922" : undefined,
+                        }}
+                        onClick={() => showCopyName(item.nama_prov, `desa-prov-${item.kode_desa}-${item.kode_prov}`)}
+                        title="Klik untuk salin nama provinsi"
+                      >
+                        {item.nama_prov}
+                      </td>
                       <td>
                         <Badge
                           color="green"
