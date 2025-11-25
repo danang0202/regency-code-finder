@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Container, Paper, Title, Text, Group, TextInput, Table, Badge, Stack, Button } from "@mantine/core";
+import { formatProv, formatKab, formatKec, formatDesa } from "../../helper/kode-wilayah.helper";
 
 interface ProvinsiItem {
   kode_prov: string;
@@ -66,16 +67,16 @@ export default function SaarchCodePage() {
     fontFamily: "monospace"
   };
 
-  const formatKodeExcel = (kode: string) => {
-    // Only format if kode is all digits and length <= 3
-    if (/^\d{1,3}$/.test(kode)) {
-      return "'" + kode.padStart(3, "0");
+  const formatKodeExcel = (kode: string, digitLen: number) => {
+    // Format code with the specified digit length for Excel (with leading quote)
+    if (/^\d+$/.test(kode)) {
+      return "'" + kode.padStart(digitLen, "0");
     }
     return kode;
   };
 
-  const showCopy = (kode: string) => {
-    const formatted = formatKodeExcel(kode);
+  const showCopy = (kode: string, digitLen: number) => {
+    const formatted = formatKodeExcel(kode, digitLen);
     navigator.clipboard.writeText(formatted);
     setCopied(kode); 
     setTimeout(() => setCopied(null), 600);
@@ -214,10 +215,10 @@ export default function SaarchCodePage() {
                               boxShadow: copied === item.kode_prov ? "0 0 0 4px #38d9a955" : undefined,
                               background: copied === item.kode_prov ? "#38d9a922" : undefined
                             }}
-                            onClick={() => showCopy(item.kode_prov)}
+                            onClick={() => showCopy(item.kode_prov, 2)}
                             title="Klik untuk salin kode"
                           >
-                            {item.kode_prov}
+                            {formatProv(item.kode_prov)}
                           </Badge>
                         </td>
                         <td>
@@ -267,10 +268,10 @@ export default function SaarchCodePage() {
                                           boxShadow: copied === kab.kode_kab ? "0 0 0 4px #228be655" : undefined,
                                           background: copied === kab.kode_kab ? "#228be622" : undefined
                                         }}
-                                        onClick={() => showCopy(kab.kode_kab)}
+                                        onClick={() => showCopy(kab.kode_kab, 2)}
                                         title="Klik untuk salin kode"
                                       >
-                                        {kab.kode_kab}
+                                        {formatKab(kab.kode_kab)}
                                       </Badge>
                                     </td>
                                   </tr>
@@ -336,10 +337,10 @@ export default function SaarchCodePage() {
                               boxShadow: copied === item.kode_kab ? "0 0 0 4px #228be655" : undefined,
                               background: copied === item.kode_kab ? "#228be622" : undefined
                             }}
-                            onClick={() => showCopy(item.kode_kab)}
+                            onClick={() => showCopy(item.kode_kab, 2)}
                             title="Klik untuk salin kode"
                           >
-                            {item.kode_kab}
+                            {formatKab(item.kode_kab)}
                           </Badge>
                         </td>
                         <td
@@ -364,10 +365,10 @@ export default function SaarchCodePage() {
                               boxShadow: copied === item.kode_prov ? "0 0 0 4px #38d9a955" : undefined,
                               background: copied === item.kode_prov ? "#38d9a922" : undefined
                             }}
-                            onClick={() => showCopy(item.kode_prov)}
+                            onClick={() => showCopy(item.kode_prov, 2)}
                             title="Klik untuk salin kode"
                           >
-                            {item.kode_prov}
+                            {formatProv(item.kode_prov)}
                           </Badge>
                         </td>
                         <td>
@@ -419,10 +420,10 @@ export default function SaarchCodePage() {
                                             boxShadow: copied === kec.kode_kec ? "0 0 0 4px #fd7e1455" : undefined,
                                             background: copied === kec.kode_kec ? "#fd7e1422" : undefined
                                           }}
-                                          onClick={() => showCopy(kec.kode_kec)}
+                                          onClick={() => showCopy(kec.kode_kec, 3)}
                                           title="Klik untuk salin kode"
                                         >
-                                          {kec.kode_kec}
+                                          {formatKec(kec.kode_kec)}
                                         </Badge>
                                       </td>
                                     </tr>
@@ -490,10 +491,10 @@ export default function SaarchCodePage() {
                               boxShadow: copied === item.kode_kec ? "0 0 0 4px #fd7e1455" : undefined,
                               background: copied === item.kode_kec ? "#fd7e1422" : undefined
                             }}
-                            onClick={() => showCopy(item.kode_kec)}
+                            onClick={() => showCopy(item.kode_kec, 3)}
                             title="Klik untuk salin kode"
                           >
-                            {item.kode_kec}
+                            {formatKec(item.kode_kec)}
                           </Badge>
                         </td>
                         <td
@@ -518,10 +519,10 @@ export default function SaarchCodePage() {
                               boxShadow: copied === item.kode_kab ? "0 0 0 4px #228be655" : undefined,
                               background: copied === item.kode_kab ? "#228be622" : undefined
                             }}
-                            onClick={() => showCopy(item.kode_kab)}
+                            onClick={() => showCopy(item.kode_kab, 2)}
                             title="Klik untuk salin kode"
                           >
-                            {item.kode_kab}
+                            {formatKab(item.kode_kab)}
                           </Badge>
                         </td>
                         <td
@@ -546,10 +547,10 @@ export default function SaarchCodePage() {
                               boxShadow: copied === item.kode_prov ? "0 0 0 4px #38d9a955" : undefined,
                               background: copied === item.kode_prov ? "#38d9a922" : undefined
                             }}
-                            onClick={() => showCopy(item.kode_prov)}
+                            onClick={() => showCopy(item.kode_prov, 2)}
                             title="Klik untuk salin kode"
                           >
-                            {item.kode_prov}
+                            {formatProv(item.kode_prov)}
                           </Badge>
                         </td>
                         <td>
@@ -611,10 +612,10 @@ export default function SaarchCodePage() {
                                             boxShadow: copied === ds.kode_desa ? "0 0 0 4px #f0659555" : undefined,
                                             background: copied === ds.kode_desa ? "#f0659522" : undefined
                                           }}
-                                          onClick={() => showCopy(ds.kode_desa)}
+                                          onClick={() => showCopy(ds.kode_desa, 3)}
                                           title="Klik untuk salin kode"
                                         >
-                                          {ds.kode_desa}
+                                          {formatDesa(ds.kode_desa)}
                                         </Badge>
                                       </td>
                                     </tr>
@@ -682,10 +683,10 @@ export default function SaarchCodePage() {
                             boxShadow: copied === item.kode_desa ? "0 0 0 4px #f0659555" : undefined,
                             background: copied === item.kode_desa ? "#f0659522" : undefined
                           }}
-                          onClick={() => showCopy(item.kode_desa)}
+                          onClick={() => showCopy(item.kode_desa, 3)}
                           title="Klik untuk salin kode"
                         >
-                          {item.kode_desa}
+                          {formatDesa(item.kode_desa)}
                         </Badge>
                       </td>
                       <td
@@ -710,10 +711,10 @@ export default function SaarchCodePage() {
                             boxShadow: copied === item.kode_kec ? "0 0 0 4px #fd7e1455" : undefined,
                             background: copied === item.kode_kec ? "#fd7e1422" : undefined
                           }}
-                          onClick={() => showCopy(item.kode_kec)}
+                          onClick={() => showCopy(item.kode_kec, 3)}
                           title="Klik untuk salin kode"
                         >
-                          {item.kode_kec}
+                          {formatKec(item.kode_kec)}
                         </Badge>
                       </td>
                       <td
@@ -738,10 +739,10 @@ export default function SaarchCodePage() {
                             boxShadow: copied === item.kode_kab ? "0 0 0 4px #228be655" : undefined,
                             background: copied === item.kode_kab ? "#228be622" : undefined
                           }}
-                          onClick={() => showCopy(item.kode_kab)}
+                          onClick={() => showCopy(item.kode_kab, 2)}
                           title="Klik untuk salin kode"
                         >
-                          {item.kode_kab}
+                          {formatKab(item.kode_kab)}
                         </Badge>
                       </td>
                       <td
@@ -766,10 +767,10 @@ export default function SaarchCodePage() {
                             boxShadow: copied === item.kode_prov ? "0 0 0 4px #38d9a955" : undefined,
                             background: copied === item.kode_prov ? "#38d9a922" : undefined
                           }}
-                          onClick={() => showCopy(item.kode_prov)}
+                          onClick={() => showCopy(item.kode_prov, 2)}
                           title="Klik untuk salin kode"
                         >
-                          {item.kode_prov}
+                          {formatProv(item.kode_prov)}
                         </Badge>
                       </td>
                     </tr>
