@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Container, Paper, Title, Text, Group, TextInput, Table, Badge, Stack, Button } from "@mantine/core";
 
 interface ProvinsiItem {
@@ -39,6 +39,23 @@ export default function SaarchCodePage() {
   const [expandedKecamatan, setExpandedKecamatan] = useState<string[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
   const [copiedName, setCopiedName] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcut: Ctrl+F (Windows/Linux) or Cmd+F (Mac) to focus and clear search bar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        setKeyword("");
+        searchInputRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   const formatKodeExcel = (kode: string) => {
     // Only format if kode is all digits and length <= 3
@@ -128,12 +145,16 @@ export default function SaarchCodePage() {
           </Group>
 
           <TextInput
+            ref={searchInputRef}
             placeholder="Ketik nama wilayah, provinsi, atau kode..."
             value={keyword}
             onChange={(e) => setKeyword(e.currentTarget.value)}
-            mb="lg"
+            mb="xs"
             size="md"
           />
+          <Text size="xs" color="dimmed" mb="lg">
+            Tekan <kbd style={{ padding: "2px 6px", borderRadius: 4, backgroundColor: "#f1f3f5", border: "1px solid #dee2e6", fontFamily: "monospace" }}>Ctrl</kbd> + <kbd style={{ padding: "2px 6px", borderRadius: 4, backgroundColor: "#f1f3f5", border: "1px solid #dee2e6", fontFamily: "monospace" }}>F</kbd> atau <kbd style={{ padding: "2px 6px", borderRadius: 4, backgroundColor: "#f1f3f5", border: "1px solid #dee2e6", fontFamily: "monospace" }}>⌘</kbd> + <kbd style={{ padding: "2px 6px", borderRadius: 4, backgroundColor: "#f1f3f5", border: "1px solid #dee2e6", fontFamily: "monospace" }}>F</kbd> untuk fokus ke pencarian
+          </Text>
 
           <Stack>
             {key !== "" &&
