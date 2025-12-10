@@ -250,7 +250,7 @@ export default function SaarchCodePage() {
             ref={searchInputRef}
             placeholder={
               searchMode === "code" 
-                ? "Ketik kode wilayah (contoh: 32, 32.07, 3207010, dll)..." 
+                ? "Ketik kode wilayah (contoh: 32, 32.7, 3207101, dll)..." 
                 : "Ketik nama wilayah, provinsi, atau kode..."
             }
             value={keyword}
@@ -261,8 +261,9 @@ export default function SaarchCodePage() {
           <Text size="xs" color="dimmed" mb="lg">
             {searchMode === "code" ? (
               <>
-                Format kode: <strong>32</strong> (provinsi), <strong>32.07</strong> atau <strong>3207</strong> (provinsi+kabupaten), 
-                <strong> 32.07.010</strong> atau <strong>3207010</strong> (provinsi+kabupaten+kecamatan), dst. | 
+                Format kode: <strong>32</strong> (provinsi), <strong>32.7</strong> atau <strong>3207</strong> (provinsi+kabupaten), 
+                <strong> 32.7.101</strong> atau <strong>3207101</strong> (provinsi+kabupaten+kecamatan), 
+                <strong> 32.7.101.1</strong> atau <strong>32071011</strong> (lengkap dengan desa). | 
               </>
             ) : null}
             {" "}Tekan <kbd style={kbdStyle}>Ctrl</kbd> + <kbd style={kbdStyle}>F</kbd> atau <kbd style={kbdStyle}>⌘</kbd> + <kbd style={kbdStyle}>F</kbd> untuk fokus ke pencarian
