@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Container, Paper, Title, Text, Group, TextInput, Table, Badge, Stack, Button } from "@mantine/core";
+import { Container, Paper, Title, Text, Group, TextInput, Table, Badge, Stack, Button, SegmentedControl } from "@mantine/core";
 import { formatProv, formatKab, formatKec, formatDesa } from "../../helper/kode-wilayah.helper";
 
 interface ProvinsiItem {
@@ -35,6 +35,7 @@ interface DesaItem {
 
 export default function SaarchCodePage() {
   const [keyword, setKeyword] = useState("");
+  const [searchMode, setSearchMode] = useState<"name" | "code">("name");
   const [expandedProvinsi, setExpandedProvinsi] = useState<string | null>(null);
   const [expandedKabupaten, setExpandedKabupaten] = useState<string | null>(null);
   const [expandedKecamatan, setExpandedKecamatan] = useState<string[]>([]);
@@ -117,29 +118,97 @@ export default function SaarchCodePage() {
   const normalize = (str: string) => str.toLowerCase().replace(/'/g, "");
   const key = normalize(keyword.trim());
 
+  // Helper to parse hierarchical code for code search mode
+  const parseCode = (code: string) => {
+    const cleaned = code.trim();
+    
+    // Handle dot-separated format
+    if (cleaned.includes('.')) {
+      const parts = cleaned.split('.');
+      return {
+        provinsi: parts[0] ? parts[0].padStart(2, '0') : undefined,
+        kabupaten: parts[1] ? parts[1].padStart(2, '0') : undefined,
+        kecamatan: parts[2] ? parts[2].padStart(3, '0') : undefined,
+        desa: parts[3] ? parts[3].padStart(3, '0') : undefined,
+      };
+    }
+    
+    // Handle continuous format
+    return {
+      provinsi: cleaned.length >= 1 ? cleaned.substring(0, Math.min(2, cleaned.length)).padStart(2, '0') : undefined,
+      kabupaten: cleaned.length >= 3 ? cleaned.substring(2, 4) : undefined,
+      kecamatan: cleaned.length >= 5 ? cleaned.substring(4, 7) : undefined,
+      desa: cleaned.length >= 8 ? cleaned.substring(7, 10) : undefined,
+    };
+  };
+
+  const parsedCode = searchMode === "code" && key ? parseCode(key) : null;
+
   // Filter provinsi
   const filteredProvinsi = provinsi.filter((item) => {
     if (!key) return false;
+    
+    if (searchMode === "code" && parsedCode) {
+      return parsedCode.provinsi && item.kode_prov === parsedCode.provinsi;
+    }
+    
     return normalize(item.nama_prov).includes(key);
   });
 
-  // Filter kabupaten hanya di nama kabupaten
+  // Filter kabupaten
   const filteredKabupaten = kabupaten.filter((item) => {
     if (!key) return false;
+    
+    if (searchMode === "code" && parsedCode) {
+      const matchProv = parsedCode.provinsi && item.kode_prov === parsedCode.provinsi;
+      if (parsedCode.kabupaten) {
+        return matchProv && item.kode_kab === parsedCode.kabupaten;
+      }
+      return matchProv;
+    }
+    
     return normalize(item.kab_nama).includes(key);
   });
 
-  // Filter kecamatan hanya di nama kecamatan
+  // Filter kecamatan
   const filteredKecamatan = kecamatan.filter((item) => {
     if (!key) return false;
+    
+    if (searchMode === "code" && parsedCode) {
+      const matchProv = parsedCode.provinsi && item.kode_prov === parsedCode.provinsi;
+      
+      if (parsedCode.kecamatan && parsedCode.kabupaten) {
+        return matchProv && item.kode_kab === parsedCode.kabupaten && item.kode_kec === parsedCode.kecamatan;
+      } else if (parsedCode.kabupaten) {
+        return matchProv && item.kode_kab === parsedCode.kabupaten;
+      }
+      return matchProv;
+    }
+    
     return normalize(item.kec_nama || "").includes(key);
   });
 
-  // Filter desa hanya di nama desa
+  // Filter desa
   const filteredDesa = desa.filter((item) => {
     if (!key) return false;
+    
+    if (searchMode === "code" && parsedCode) {
+      const matchProv = parsedCode.provinsi && item.kode_prov === parsedCode.provinsi;
+      
+      if (parsedCode.desa && parsedCode.kecamatan && parsedCode.kabupaten) {
+        return matchProv && item.kode_kab === parsedCode.kabupaten && 
+               item.kode_kec === parsedCode.kecamatan && item.kode_desa === parsedCode.desa;
+      } else if (parsedCode.kecamatan && parsedCode.kabupaten) {
+        return matchProv && item.kode_kab === parsedCode.kabupaten && item.kode_kec === parsedCode.kecamatan;
+      } else if (parsedCode.kabupaten) {
+        return matchProv && item.kode_kab === parsedCode.kabupaten;
+      }
+      return matchProv;
+    }
+    
     return normalize(item.desa_nama || "").includes(key);
   });
+
 
   return (
     <div style={{ minHeight: "100vh" }}>
@@ -151,21 +220,45 @@ export default function SaarchCodePage() {
                 Search Code
               </Title>
               <Text size="sm" color="dimmed">
-                Cari wilayah dan kode wilayah berdasarkan kata kunci
+                Cari wilayah dan kode wilayah berdasarkan kata kunci atau kode
               </Text>
             </div>
           </Group>
 
+          <SegmentedControl
+            value={searchMode}
+            onChange={(value) => {
+              setSearchMode(value as "name" | "code");
+              setKeyword("");
+            }}
+            data={[
+              { label: "Cari Berdasarkan Nama", value: "name" },
+              { label: "Cari Berdasarkan Kode", value: "code" },
+            ]}
+            mb="md"
+            fullWidth
+          />
+
           <TextInput
             ref={searchInputRef}
-            placeholder="Ketik nama wilayah, provinsi, atau kode..."
+            placeholder={
+              searchMode === "code" 
+                ? "Ketik kode wilayah (contoh: 32, 32.07, 3207010, dll)..." 
+                : "Ketik nama wilayah, provinsi, atau kode..."
+            }
             value={keyword}
             onChange={(e) => setKeyword(e.currentTarget.value)}
             mb="xs"
             size="md"
           />
           <Text size="xs" color="dimmed" mb="lg">
-            Tekan <kbd style={kbdStyle}>Ctrl</kbd> + <kbd style={kbdStyle}>F</kbd> atau <kbd style={kbdStyle}>⌘</kbd> + <kbd style={kbdStyle}>F</kbd> untuk fokus ke pencarian
+            {searchMode === "code" ? (
+              <>
+                Format kode: <strong>32</strong> (provinsi), <strong>32.07</strong> atau <strong>3207</strong> (provinsi+kabupaten), 
+                <strong> 32.07.010</strong> atau <strong>3207010</strong> (provinsi+kabupaten+kecamatan), dst. | 
+              </>
+            ) : null}
+            {" "}Tekan <kbd style={kbdStyle}>Ctrl</kbd> + <kbd style={kbdStyle}>F</kbd> atau <kbd style={kbdStyle}>⌘</kbd> + <kbd style={kbdStyle}>F</kbd> untuk fokus ke pencarian
           </Text>
 
           <Stack>

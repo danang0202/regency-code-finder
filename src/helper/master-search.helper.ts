@@ -10,7 +10,7 @@ export interface MasterResult {
 }
 
 /**
- * Search master region data from API
+ * Search master region data from API by name
  */
 export async function searchMasterRegion(query: string): Promise<MasterResult | null> {
   if (!query.trim()) {
@@ -19,6 +19,25 @@ export async function searchMasterRegion(query: string): Promise<MasterResult | 
 
   try {
     const response = await fetch(`/v2/api/search-master?query=${encodeURIComponent(query)}`);
+    if (response.ok) {
+      return await response.json();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Search master region data from API by hierarchical code
+ */
+export async function searchByRegionCode(code: string): Promise<MasterResult | null> {
+  if (!code.trim()) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(`/v2/api/search-by-code?code=${encodeURIComponent(code)}`);
     if (response.ok) {
       return await response.json();
     }
