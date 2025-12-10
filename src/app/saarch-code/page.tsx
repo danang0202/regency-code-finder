@@ -173,7 +173,7 @@ export default function SaarchCodePage() {
     }
     
     return normalize(item.nama_prov).includes(key);
-  });
+  }).sort((a, b) => a.nama_prov.localeCompare(b.nama_prov, 'id', { sensitivity: 'base' }));
 
   // Filter kabupaten
   const filteredKabupaten = kabupaten.filter((item) => {
@@ -188,7 +188,7 @@ export default function SaarchCodePage() {
     }
     
     return normalize(item.kab_nama).includes(key);
-  });
+  }).sort((a, b) => a.kab_nama.localeCompare(b.kab_nama, 'id', { sensitivity: 'base' }));
 
   // Filter kecamatan
   const filteredKecamatan = kecamatan.filter((item) => {
@@ -206,7 +206,7 @@ export default function SaarchCodePage() {
     }
     
     return normalize(item.kec_nama || "").includes(key);
-  });
+  }).sort((a, b) => (a.kec_nama || "").localeCompare(b.kec_nama || "", 'id', { sensitivity: 'base' }));
 
   // Filter desa
   const filteredDesa = desa.filter((item) => {
@@ -227,7 +227,7 @@ export default function SaarchCodePage() {
     }
     
     return normalize(item.desa_nama || "").includes(key);
-  });
+  }).sort((a, b) => (a.desa_nama || "").localeCompare(b.desa_nama || "", 'id', { sensitivity: 'base' }));
 
 
   return (
@@ -361,7 +361,7 @@ export default function SaarchCodePage() {
                                 </tr>
                               </thead>
                               <tbody>
-                                {kabupaten.filter(kab => kab.kode_prov === item.kode_prov).map(kab => (
+                                {kabupaten.filter(kab => kab.kode_prov === item.kode_prov).sort((a, b) => a.kab_nama.localeCompare(b.kab_nama, 'id', { sensitivity: 'base' })).map(kab => (
                                   <tr key={kab.kode_kab}>
                                     <td
                                       style={{
@@ -513,6 +513,7 @@ export default function SaarchCodePage() {
                               <tbody>
                                 {kecamatan
                                   .filter(kec => kec.kode_kab === item.kode_kab && kec.nama_prov === item.nama_prov)
+                                  .sort((a, b) => a.kec_nama.localeCompare(b.kec_nama, 'id', { sensitivity: 'base' }))
                                   .map(kec => (
                                     <tr key={kec.kode_kec}>
                                       <td
@@ -705,6 +706,7 @@ export default function SaarchCodePage() {
                                     ds.kode_kab === item.kode_kab &&
                                     ds.kode_prov === item.kode_prov
                                   )
+                                  .sort((a, b) => a.desa_nama.localeCompare(b.desa_nama, 'id', { sensitivity: 'base' }))
                                   .map(ds => (
                                     <tr key={ds.kode_desa}>
                                       <td
