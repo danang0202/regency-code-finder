@@ -28,6 +28,13 @@ export interface ParsedCode {
 export function parseHierarchicalCode(code: string): ParsedCode {
   const cleaned = code.trim();
   
+  // Helper to remove leading zeros but keep at least one digit
+  const normalizeCode = (val: string | undefined): string | undefined => {
+    if (!val) return undefined;
+    const num = parseInt(val, 10);
+    return isNaN(num) ? val : num.toString();
+  };
+  
   // Handle dot-separated format
   if (cleaned.includes('.')) {
     const parts = cleaned.split('.');
@@ -37,13 +44,13 @@ export function parseHierarchicalCode(code: string): ParsedCode {
       result.provinsi = parts[0].padStart(2, '0');
     }
     if (parts.length >= 2 && parts[1]) {
-      result.kabupaten = parts[1].padStart(2, '0');
+      result.kabupaten = normalizeCode(parts[1]);
     }
     if (parts.length >= 3 && parts[2]) {
-      result.kecamatan = parts[2].padStart(3, '0');
+      result.kecamatan = normalizeCode(parts[2]);
     }
     if (parts.length >= 4 && parts[3]) {
-      result.desa = parts[3].padStart(3, '0');
+      result.desa = normalizeCode(parts[3]);
     }
     
     return result;
@@ -59,19 +66,19 @@ export function parseHierarchicalCode(code: string): ParsedCode {
     result.provinsi = cleaned.padStart(2, '0');
   }
   
-  // Kabupaten code (next 2 digits)
+  // Kabupaten code (next 2 digits) - remove leading zeros
   if (cleaned.length >= 4) {
-    result.kabupaten = cleaned.substring(2, 4);
+    result.kabupaten = normalizeCode(cleaned.substring(2, 4));
   }
   
-  // Kecamatan code (next 3 digits)
+  // Kecamatan code (next 3 digits) - remove leading zeros
   if (cleaned.length >= 7) {
-    result.kecamatan = cleaned.substring(4, 7);
+    result.kecamatan = normalizeCode(cleaned.substring(4, 7));
   }
   
-  // Desa code (next 3 digits)
+  // Desa code (next 3 digits) - remove leading zeros
   if (cleaned.length >= 10) {
-    result.desa = cleaned.substring(7, 10);
+    result.desa = normalizeCode(cleaned.substring(7, 10));
   }
   
   return result;

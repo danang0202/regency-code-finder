@@ -122,23 +122,30 @@ export default function SaarchCodePage() {
   const parseCode = (code: string) => {
     const cleaned = code.trim();
     
+    // Helper to remove leading zeros but keep at least one digit
+    const normalizeCode = (val: string | undefined) => {
+      if (!val) return undefined;
+      const num = parseInt(val, 10);
+      return isNaN(num) ? val : num.toString();
+    };
+    
     // Handle dot-separated format
     if (cleaned.includes('.')) {
       const parts = cleaned.split('.');
       return {
         provinsi: parts[0] ? parts[0].padStart(2, '0') : undefined,
-        kabupaten: parts[1] ? parts[1].padStart(2, '0') : undefined,
-        kecamatan: parts[2] ? parts[2].padStart(3, '0') : undefined,
-        desa: parts[3] ? parts[3].padStart(3, '0') : undefined,
+        kabupaten: normalizeCode(parts[1]),
+        kecamatan: normalizeCode(parts[2]),
+        desa: normalizeCode(parts[3]),
       };
     }
     
     // Handle continuous format
     return {
       provinsi: cleaned.length >= 1 ? cleaned.substring(0, Math.min(2, cleaned.length)).padStart(2, '0') : undefined,
-      kabupaten: cleaned.length >= 3 ? cleaned.substring(2, 4) : undefined,
-      kecamatan: cleaned.length >= 5 ? cleaned.substring(4, 7) : undefined,
-      desa: cleaned.length >= 8 ? cleaned.substring(7, 10) : undefined,
+      kabupaten: cleaned.length >= 3 ? normalizeCode(cleaned.substring(2, 4)) : undefined,
+      kecamatan: cleaned.length >= 5 ? normalizeCode(cleaned.substring(4, 7)) : undefined,
+      desa: cleaned.length >= 8 ? normalizeCode(cleaned.substring(7, 10)) : undefined,
     };
   };
 
