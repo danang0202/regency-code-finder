@@ -43,13 +43,26 @@ export default function SaarchCodePage() {
   const [copiedName, setCopiedName] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Keyboard shortcut: Ctrl+F (Windows/Linux) or Cmd+F (Mac) to focus and clear search bar
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+F (Windows/Linux) or Cmd+F (Mac) to focus and clear search bar
       if ((e.ctrlKey || e.metaKey) && e.key === "f") {
         e.preventDefault();
         setKeyword("");
         searchInputRef.current?.focus();
+      }
+      
+      // Ctrl+ArrowLeft or Cmd+ArrowLeft to switch to "name" search mode
+      if ((e.ctrlKey || e.metaKey) && e.key === "ArrowLeft") {
+        e.preventDefault();
+        setSearchMode("name");
+      }
+      
+      // Ctrl+ArrowRight or Cmd+ArrowRight to switch to "code" search mode
+      if ((e.ctrlKey || e.metaKey) && e.key === "ArrowRight") {
+        e.preventDefault();
+        setSearchMode("code");
       }
     };
 
@@ -242,9 +255,12 @@ export default function SaarchCodePage() {
               { label: "Cari Berdasarkan Nama", value: "name" },
               { label: "Cari Berdasarkan Kode", value: "code" },
             ]}
-            mb="md"
+            mb="xs"
             fullWidth
           />
+          <Text size="xs" color="dimmed" mb="md" ta="center">
+            Navigasi: <kbd style={kbdStyle}>Ctrl</kbd> + <kbd style={kbdStyle}>←</kbd> untuk Nama, <kbd style={kbdStyle}>Ctrl</kbd> + <kbd style={kbdStyle}>→</kbd> untuk Kode (Mac: <kbd style={kbdStyle}>⌘</kbd>)
+          </Text>
 
           <TextInput
             ref={searchInputRef}
