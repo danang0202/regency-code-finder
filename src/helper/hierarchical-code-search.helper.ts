@@ -119,7 +119,7 @@ export function searchByHierarchicalCode(
     result.provinsi = uniqueBy(
       masterData.provinsi.filter(p => p.kode_prov === parsedCode.provinsi),
       (p) => `${p.kode_prov}|${p.nama_prov}`
-    );
+    ).sort((a, b) => a.nama_prov.localeCompare(b.nama_prov, 'id', { sensitivity: 'base' }));
   }
   
   // Search kabupaten
@@ -137,7 +137,7 @@ export function searchByHierarchicalCode(
     result.kabupaten = uniqueBy(
       kabupatenFiltered,
       (k) => `${k.kode_kab}|${k.kab_nama}`
-    );
+    ).sort((a, b) => a.kab_nama.localeCompare(b.kab_nama, 'id', { sensitivity: 'base' }));
   }
   
   // Search kecamatan
@@ -160,7 +160,7 @@ export function searchByHierarchicalCode(
     result.kecamatan = uniqueBy(
       kecamatanFiltered,
       (kec) => `${kec.kode_kec}|${kec.kec_nama}`
-    );
+    ).sort((a, b) => a.kec_nama.localeCompare(b.kec_nama, 'id', { sensitivity: 'base' }));
   }
   
   // Search desa
@@ -187,7 +187,7 @@ export function searchByHierarchicalCode(
     result.desa = uniqueBy(
       desaFiltered,
       (d) => `${d.kode_desa}|${d.desa_nama}`
-    );
+    ).sort((a, b) => a.desa_nama.localeCompare(b.desa_nama, 'id', { sensitivity: 'base' }));
   }
   
   return result;

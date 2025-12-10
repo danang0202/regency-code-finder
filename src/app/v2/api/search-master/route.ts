@@ -32,6 +32,8 @@ export async function GET(request: Request) {
       r.nama_prov?.toLowerCase().includes(query)
     ),
     (r: { kode_prov: string; nama_prov: string }) => `${r.kode_prov}|${r.nama_prov}`
+  ).sort((a: { nama_prov: string }, b: { nama_prov: string }) => 
+    a.nama_prov.localeCompare(b.nama_prov, 'id', { sensitivity: 'base' })
   );
 
   const kabupaten = uniqueBy(
@@ -40,6 +42,8 @@ export async function GET(request: Request) {
       r.kab_nama?.toLowerCase().includes(query)
     ),
     (r: { kode_kab: string; kab_nama: string }) => `${r.kode_kab}|${r.kab_nama}`
+  ).sort((a: { kab_nama: string }, b: { kab_nama: string }) => 
+    a.kab_nama.localeCompare(b.kab_nama, 'id', { sensitivity: 'base' })
   );
 
   const kecamatan = uniqueBy(
@@ -48,6 +52,8 @@ export async function GET(request: Request) {
       r.kec_nama?.toLowerCase().includes(query)
     ),
     (r: { kode_kec: string; kec_nama: string }) => `${r.kode_kec}|${r.kec_nama}`
+  ).sort((a: { kec_nama: string }, b: { kec_nama: string }) => 
+    a.kec_nama.localeCompare(b.kec_nama, 'id', { sensitivity: 'base' })
   );
 
   const desa = uniqueBy(
@@ -56,6 +62,8 @@ export async function GET(request: Request) {
       r.desa_nama?.toLowerCase().includes(query)
     ),
     (r: { kode_desa: string; desa_nama: string }) => `${r.kode_desa}|${r.desa_nama}`
+  ).sort((a: { desa_nama: string }, b: { desa_nama: string }) => 
+    a.desa_nama.localeCompare(b.desa_nama, 'id', { sensitivity: 'base' })
   );
 
   return NextResponse.json({ provinsi, kabupaten, kecamatan, desa }, { status: 200 });
