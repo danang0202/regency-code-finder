@@ -31,6 +31,19 @@ A Next.js application for managing and searching region codes (provinsi, kabupat
 - **Search & Filter** — Filter data by various columns
 - **Pagination** — Navigate through large datasets efficiently
 - **Download** — Export processed data
+- **Keyboard Shortcuts** — Navigate efficiently with keyboard shortcuts
+
+## Keyboard Shortcuts
+
+### Search Code Page
+
+- **Ctrl+F** (Windows/Linux) or **⌘+F** (Mac) — Focus on search bar and clear input
+- **Ctrl+←** (Windows/Linux) or **⌘+←** (Mac) — Switch to "Cari Berdasarkan Nama" (global search)
+- **Ctrl+→** (Windows/Linux) or **⌘+→** (Mac) — Switch to "Cari Berdasarkan Kode" (hierarchical code search)
+
+### File Processing Page
+
+- **Ctrl+S** (Windows/Linux) or **⌘+S** (Mac) — Save pending changes
 
 ## Project Structure
 
