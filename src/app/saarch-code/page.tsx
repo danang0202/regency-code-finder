@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Container, Paper, Title, Text, Group, TextInput, Table, Badge, Stack, Button, SegmentedControl } from "@mantine/core";
+import { useDebouncedValue } from "@mantine/hooks";
 import { formatProv, formatKab, formatKec, formatDesa } from "../../helper/kode-wilayah.helper";
 
 interface ProvinsiItem {
@@ -35,6 +36,7 @@ interface DesaItem {
 
 export default function SaarchCodePage() {
   const [keyword, setKeyword] = useState("");
+  const [debouncedKeyword] = useDebouncedValue(keyword, 300);
   const [searchMode, setSearchMode] = useState<"name" | "code">("name");
   const [expandedProvinsi, setExpandedProvinsi] = useState<string | null>(null);
   const [expandedKabupaten, setExpandedKabupaten] = useState<string | null>(null);
@@ -129,7 +131,7 @@ export default function SaarchCodePage() {
 
   // Remove single quotes for search matching
   const normalize = (str: string) => str.toLowerCase().replace(/'/g, "");
-  const key = normalize(keyword.trim());
+  const key = normalize(debouncedKeyword.trim());
 
   // Helper to parse hierarchical code for code search mode
   const parseCode = (code: string) => {
