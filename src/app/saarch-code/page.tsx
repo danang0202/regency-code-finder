@@ -52,6 +52,10 @@ export default function SaarchCodePage() {
       if ((e.ctrlKey || e.metaKey) && e.key === "f") {
         e.preventDefault();
         setKeyword("");
+        // Reset all expanded states to close tabs
+        setExpandedProvinsi(null);
+        setExpandedKabupaten(null);
+        setExpandedKecamatan([]);
         searchInputRef.current?.focus();
       }
       
